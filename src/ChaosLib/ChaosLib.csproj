@@ -1,10 +1,16 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<Import Project="$(Build)ClrDebug.props" />
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFrameworks>netstandard2.0;net472</TargetFrameworks>
+	  <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\ChaosLib.xml</DocumentationFile>
+	  <NoWarn>1701;1702;CS1591</NoWarn>
 	  <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Condition="'$(TargetFramework)' == 'net472'" Include="envdte80" Version="$(EnvDTEVersion)" PrivateAssets="all" />
+  </ItemGroup>
 
 </Project>

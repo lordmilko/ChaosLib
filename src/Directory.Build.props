@@ -1,7 +1,5 @@
 ﻿<Project>
   <PropertyGroup>
-    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-
     <Build>$(MSBuildThisFileDirectory)..\build\</Build>
 	
     <Copyright>(c) 2023 lordmilko. All rights reserved.</Copyright>
@@ -10,6 +8,7 @@
   <!-- Package Versions -->
 
   <PropertyGroup>
+    <EnvDTEVersion>8.0.3</EnvDTEVersion>
     <ClrDebugVersion>0.3.0</ClrDebugVersion>
 
     <TestSDKVersion>16.9.4</TestSDKVersion>
