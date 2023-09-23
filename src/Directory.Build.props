@@ -1,0 +1,19 @@
+﻿<Project>
+  <PropertyGroup>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+
+    <Build>$(MSBuildThisFileDirectory)..\build\</Build>
+	
+    <Copyright>(c) 2023 lordmilko. All rights reserved.</Copyright>
+  </PropertyGroup>
+
+  <!-- Package Versions -->
+
+  <PropertyGroup>
+    <ClrDebugVersion>0.3.0</ClrDebugVersion>
+
+    <TestSDKVersion>16.9.4</TestSDKVersion>
+    <MSTestVersion>2.2.3</MSTestVersion>
+    <CoverletVersion>3.0.2</CoverletVersion>
+  </PropertyGroup>
+</Project>
