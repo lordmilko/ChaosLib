@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -10,10 +11,15 @@ using ClrDebug;
 namespace ChaosLib
 {
 #if NETFRAMEWORK
+    //Casting the EnvDTE.Debugger to EnvDTE80.Debugger2 provides access to the Transports member.
+    //The Default transport contains a list of possible Engines that can be specified to Attach2
     public enum VsDebuggerType
     {
         Native,
-        Managed
+        Managed,
+
+        [Description("Managed (.NET Core, .NET 5+)")]
+        Core
     }
 
     /// <summary>
@@ -45,7 +51,7 @@ namespace ChaosLib
                                 {
                                     try
                                     {
-                                        process.Attach2(type.ToString());
+                                        process.Attach2(type.GetDescription());
                                     }
                                     catch (Exception ex)
                                     {
@@ -66,6 +72,24 @@ namespace ChaosLib
                         throw;
                 }
             }
+        }
+
+        private static object GetEngine(EnvDTE.Debugger debugger, string name)
+        {
+            //The .NET Core engine name can't be specified directly to Attach 2, so get the Engine object instead
+
+            EnvDTE80.Debugger2 debugger2 = (EnvDTE80.Debugger2) debugger;
+
+            var transport = debugger2.Transports.Item("default");
+
+            foreach (EnvDTE80.Engine engine in transport.Engines)
+            {
+                if (engine.Name == name)
+                    return engine;
+            }
+
+            //Couldn't find the engine; try using the name directly
+            return name;
         }
 
         private static EnvDTE.DTE GetDTEDebuggingMe()

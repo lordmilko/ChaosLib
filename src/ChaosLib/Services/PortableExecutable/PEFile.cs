@@ -175,7 +175,7 @@ namespace ChaosLib.Metadata
                 return null;
 
             reader.Seek(offset);
-            return new ImageExportDirectory(reader);
+            return new ImageExportDirectory(this, reader);
         }
 
         #region Helpers

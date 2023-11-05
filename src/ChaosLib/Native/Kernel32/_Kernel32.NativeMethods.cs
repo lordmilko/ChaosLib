@@ -55,6 +55,9 @@ namespace ChaosLib
             public static extern bool FreeLibrary(IntPtr hLibModule);
 
             [DllImport(kernel32, SetLastError = true)]
+            public static extern bool GetExitCodeThread(IntPtr hThread, out int lpExitCode);
+
+            [DllImport(kernel32, SetLastError = true)]
             public static extern IntPtr GetProcAddress(IntPtr hModule, string lpProcName);
 
             [DllImport(kernel32, SetLastError = true)]
@@ -67,6 +70,12 @@ namespace ChaosLib
 
             [DllImport(kernel32, EntryPoint = "LoadLibraryW", CharSet = CharSet.Unicode, SetLastError = true)]
             public static extern IntPtr LoadLibrary(string lpLibFileName);
+
+            [DllImport(kernel32, SetLastError = true)]
+            public static extern IntPtr OpenProcess(
+                ProcessAccessFlags dwDesiredAccess,
+                bool bInheritHandle,
+                int dwProcessId);
 
             [DllImport(kernel32, SetLastError = true)]
             public static extern IntPtr OpenThread(ThreadAccess dwDesiredAccess, bool bInheritHandle, int dwThreadId);
@@ -95,7 +104,8 @@ namespace ChaosLib
             public static extern int SuspendThread(IntPtr hThread);
 
             [DllImport(kernel32, SetLastError = true, ExactSpelling = true)]
-            public static extern IntPtr VirtualAllocEx(IntPtr hProcess,
+            public static extern IntPtr VirtualAllocEx(
+                IntPtr hProcess,
                 IntPtr lpAddress,
                 int dwSize,
                 AllocationType flAllocationType,
@@ -110,6 +120,14 @@ namespace ChaosLib
 
             [DllImport(kernel32, SetLastError = true)]
             public static extern uint WaitForSingleObject(IntPtr hHandle, int dwMilliseconds);
+
+            [DllImport(kernel32, SetLastError = true)]
+            public static extern bool WriteProcessMemory(
+                IntPtr hProcess,
+                IntPtr lpBaseAddress,
+                IntPtr lpBuffer,
+                IntPtr nSize,
+                out IntPtr lpNumberOfBytesWritten);
 
             [DllImport(kernel32, EntryPoint = "RtlZeroMemory", SetLastError = false)]
             public static extern void ZeroMemory(IntPtr dest, int size);

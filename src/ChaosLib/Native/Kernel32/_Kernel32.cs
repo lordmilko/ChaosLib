@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Runtime.InteropServices;
+using ChaosLib.Memory;
 using ClrDebug;
 using static ChaosLib.Kernel32.Native;
 using static ClrDebug.HRESULT;
@@ -16,7 +17,7 @@ namespace ChaosLib
 
         #region Relay
 
-        public static void CloseHandle(IntPtr handle) => Native.CloseHandle(handle);
+        public static bool CloseHandle(IntPtr handle) => Native.CloseHandle(handle);
 
         public static void FreeLibrary(IntPtr hLibModule) => Native.FreeLibrary(hLibModule);
 
@@ -24,6 +25,8 @@ namespace ChaosLib
             Native.SetConsoleCtrlHandler(HandlerRoutine, Add);
 
         public static void SetDllDirectory(string lpPathName) => Native.SetDllDirectory(lpPathName);
+
+        public static void VirtualFreeEx(IntPtr hProcess, IntPtr lpAddress) => Native.VirtualFreeEx(hProcess, lpAddress, 0, AllocationType.Release);
 
         public static void ZeroMemory(IntPtr dest, int size) => Native.ZeroMemory(dest, size);
 
@@ -100,38 +103,45 @@ namespace ChaosLib
         #endregion
         #region CreateRemoteThread
 
-        public static void CreateRemoteThread(
+        public static int CreateRemoteThread(
             IntPtr hProcess,
             IntPtr lpStartAddress,
             IntPtr lpParameter,
             bool waitForFinish = false)
         {
-            TryCreateRemoteThread(hProcess, lpStartAddress, lpParameter, waitForFinish).ThrowOnNotOK();
+            TryCreateRemoteThread(hProcess, lpStartAddress, lpParameter, waitForFinish, out var exitCode).ThrowOnNotOK();
+            return exitCode;
         }
 
         public static HRESULT TryCreateRemoteThread(
             IntPtr hProcess,
             IntPtr lpStartAddress,
             IntPtr lpParameter,
-            bool waitForFinish = false)
+            bool waitForFinish,
+            out int exitCode)
         {
-            var result = Native.CreateRemoteThread(
+            exitCode = default;
+
+            var hThread = Native.CreateRemoteThread(
                 hProcess,
                 IntPtr.Zero,
                 0,
                 lpStartAddress,
                 lpParameter,
                 0,
-                out var lpThreadId
+                out _ //lpThreadId
             );
 
-            if (result == IntPtr.Zero)
-                return (HRESULT)Marshal.GetHRForLastWin32Error();
+            if (hThread == IntPtr.Zero)
+                return (HRESULT) Marshal.GetHRForLastWin32Error();
 
             if (waitForFinish)
-                WaitForSingleObject(lpThreadId, INFINITE);
+                WaitForSingleObject(hThread, INFINITE);
 
-            CloseHandle(lpThreadId);
+            if (!GetExitCodeThread(hThread, out exitCode))
+                return (HRESULT) Marshal.GetHRForLastWin32Error();
+
+            CloseHandle(hThread);
 
             return S_OK;
         }
@@ -206,6 +216,19 @@ namespace ChaosLib
             var ex = Marshal.GetExceptionForHR((int)hr);
 
             throw new DllNotFoundException($"Unable to load DLL '{lpLibFileName}' or one of its dependencies: {ex.Message}");
+        }
+
+        #endregion
+        #region OpenProcess
+
+        public static SafeProcessHandle OpenProcess(ProcessAccessFlags dwDesiredAccess, bool bInheritHandle, int dwProcessId)
+        {
+            var result = Native.OpenProcess(dwDesiredAccess, bInheritHandle, dwProcessId);
+
+            if (result == IntPtr.Zero)
+                throw new DebugException((HRESULT) Marshal.GetHRForLastWin32Error());
+
+            return result;
         }
 
         #endregion
@@ -305,6 +328,36 @@ namespace ChaosLib
 
             if (result == -1)
                 throw new DebugException((HRESULT) Marshal.GetHRForLastWin32Error());
+        }
+
+        #endregion
+        #region VirtualAllocEx
+
+        public static IntPtr VirtualAllocEx(IntPtr hProcess, int dwSize, AllocationType flAllocationType, MemoryProtection flProtect)
+        {
+            var result = Native.VirtualAllocEx(hProcess, IntPtr.Zero, dwSize, flAllocationType, flProtect);
+
+            if (result == IntPtr.Zero)
+                throw new DebugException((HRESULT) Marshal.GetHRForLastWin32Error());
+
+            return result;
+        }
+
+        #endregion
+        #region WriteProcessMemory
+
+        public static bool WriteProcessMemory(
+            IntPtr hProcess,
+            IntPtr lpBaseAddress,
+            IntPtr lpBuffer,
+            int nSize,
+            out int lpNumberOfBytesWritten)
+        {
+            var result = Native.WriteProcessMemory(hProcess, lpBaseAddress, lpBuffer, new IntPtr(nSize), out var written);
+
+            lpNumberOfBytesWritten = (int) written;
+
+            return result;
         }
 
         #endregion
