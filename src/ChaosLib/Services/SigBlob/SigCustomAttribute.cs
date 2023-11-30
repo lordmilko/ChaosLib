@@ -9,7 +9,7 @@ namespace ChaosLib.Metadata
 
     public class SigCustomAttribute : ISigCustomAttribute
     {
-        public static readonly SigCustomAttribute UnsupportedAttribute = new SigCustomAttribute("UnsupportedAttribute]", Array.Empty<ISigCustomAttribFixedArg>(), Array.Empty<ISigCustomAttribNamedArg>());
+        public static readonly SigCustomAttribute UnsupportedAttribute = new SigCustomAttribute("UnsupportedAttribute", Array.Empty<ISigCustomAttribFixedArg>(), Array.Empty<ISigCustomAttribNamedArg>());
 
         public string Name { get; }
 

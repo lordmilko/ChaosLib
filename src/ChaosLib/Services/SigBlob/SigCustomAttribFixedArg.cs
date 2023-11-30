@@ -4,7 +4,7 @@
     {
     }
 
-    class SigCustomAttribFixedArg : ISigCustomAttribFixedArg
+    public class SigCustomAttribFixedArg : ISigCustomAttribFixedArg
     {
         public object Value { get; }
 
@@ -14,7 +14,7 @@
         }
     }
 
-    class SigCustomAttribEnumFixedArg : ISigCustomAttribFixedArg
+    public class SigCustomAttribEnumFixedArg : ISigCustomAttribFixedArg
     {
         public string TypeName { get; }
 
@@ -27,7 +27,7 @@
         }
     }
 
-    class SigCustomAttribTypeFixedArg : ISigCustomAttribFixedArg
+    public class SigCustomAttribTypeFixedArg : ISigCustomAttribFixedArg
     {
         public string Type { get; }
 
@@ -37,7 +37,7 @@
         }
     }
 
-    class SigCustomAttribSZArrayFixedArg : ISigCustomAttribFixedArg
+    public class SigCustomAttribSZArrayFixedArg : ISigCustomAttribFixedArg
     {
         public ISigCustomAttribFixedArg[] Items { get; }
 

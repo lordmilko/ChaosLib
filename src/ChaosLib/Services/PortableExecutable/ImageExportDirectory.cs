@@ -77,6 +77,9 @@ namespace ChaosLib.Metadata
             if (!file.TryGetOffset(AddressOfNames, out var addressOfNamesOffset))
                 return Array.Empty<IImageExportInfo>();
 
+            if (!file.TryGetOffset(AddressOfNameOrdinals, out var addressOfNameOrdinalsOffset))
+                return Array.Empty<IImageExportInfo>();
+
             var exports = new List<IImageExportInfo>();
 
             var exportTableStart = file.OptionalHeader.ExportTableDirectory.RelativeVirtualAddress;
@@ -99,7 +102,7 @@ namespace ChaosLib.Metadata
                 functionNameAddresses[i] = reader.ReadInt32();
 
             //Get the function ordinals
-            reader.Seek(AddressOfNameOrdinals);
+            reader.Seek(addressOfNameOrdinalsOffset);
 
             for (var i = 0; i < NumberOfNames; i++)
                 functionOrdinals[i] = reader.ReadUInt16();

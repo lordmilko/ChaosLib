@@ -15,6 +15,10 @@ namespace ChaosLib
 
     public class TypeRefResolver : ITypeRefResolver
     {
+        public delegate bool ShouldResolveAssemblyRefDelegate(mdTypeRef typeRef, string assemblyRef, string typeName);
+
+        public ShouldResolveAssemblyRefDelegate ShouldResolveAssemblyRef { get; set; }
+
         private Dictionary<IMetaDataImport, ModuleResolutionContext> mdiToCtxCache = new Dictionary<IMetaDataImport, ModuleResolutionContext>();
         private Dictionary<string, MetaDataImport> asmCache = new Dictionary<string, MetaDataImport>();
 
@@ -72,10 +76,10 @@ namespace ChaosLib
 
             if (!asmCache.TryGetValue(asmRefProps.szName, out var typeDefMDI))
             {
-                if (!ShouldResolveAssemblyRef(typeRef, asmRefProps.szName, typeName))
+                if (ShouldResolveAssemblyRef != null && !ShouldResolveAssemblyRef(typeRef, asmRefProps.szName, typeName))
                     return null;
 
-                if (asmRefProps.szName == "netstandard")
+                if (asmRefProps.szName == "netstandard" || asmRefProps.szName == "System.Runtime" || asmRefProps.szName == "mscorlib")
                 {
                     var path = typeof(object).Assembly.Location;
 
@@ -292,11 +296,6 @@ namespace ChaosLib
                 memberRefCtx,
                 resolvedTypeRef.TypeDefModule
             );
-        }
-
-        protected virtual bool ShouldResolveAssemblyRef(mdTypeRef typeRef, string assemblyRef, string typeName)
-        {
-            return true;
         }
     }
 }

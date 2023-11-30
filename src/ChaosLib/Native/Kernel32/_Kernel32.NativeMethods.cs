@@ -61,12 +61,25 @@ namespace ChaosLib
             public static extern IntPtr GetProcAddress(IntPtr hModule, string lpProcName);
 
             [DllImport(kernel32, SetLastError = true)]
+            public static extern IntPtr GetProcessHeap();
+
+            [DllImport(kernel32, SetLastError = true)]
             public static extern bool GetThreadContext(IntPtr hThread, IntPtr lpContext);
+
+            [DllImport(kernel32, SetLastError = true)]
+            public static extern bool HeapFree(
+                [In] IntPtr hHeap,
+                [In] int dwFlags,
+                [In] IntPtr lpMem);
 
             [DllImport(kernel32, SetLastError = true)]
             public static extern bool IsWow64Process(
                 [In] IntPtr hProcess,
                 [Out, MarshalAs(UnmanagedType.Bool)] out bool Wow64Process);
+
+            [DllImport(kernel32, SetLastError = true)]
+            public static extern IntPtr LocalFree(
+                [In] IntPtr hMem);
 
             [DllImport(kernel32, EntryPoint = "LoadLibraryW", CharSet = CharSet.Unicode, SetLastError = true)]
             public static extern IntPtr LoadLibrary(string lpLibFileName);
@@ -119,7 +132,7 @@ namespace ChaosLib
                 AllocationType dwFreeType);
 
             [DllImport(kernel32, SetLastError = true)]
-            public static extern uint WaitForSingleObject(IntPtr hHandle, int dwMilliseconds);
+            public static extern WAIT WaitForSingleObject(IntPtr hHandle, int dwMilliseconds);
 
             [DllImport(kernel32, SetLastError = true)]
             public static extern bool WriteProcessMemory(

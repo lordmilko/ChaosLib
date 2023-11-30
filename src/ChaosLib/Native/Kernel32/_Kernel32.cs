@@ -167,6 +167,29 @@ namespace ChaosLib
         }
 
         #endregion
+        #region GetProcessHeap
+
+        public static IntPtr GetProcessHeap()
+        {
+            TryGetProcessHeap(out var hHeap).ThrowOnNotOK();
+            return hHeap;
+        }
+
+        public static HRESULT TryGetProcessHeap(out IntPtr hHeap)
+        {
+            var result = Native.GetProcessHeap();
+
+            if (result == IntPtr.Zero)
+            {
+                hHeap = IntPtr.Zero;
+                return (HRESULT) Marshal.GetHRForLastWin32Error();
+            }
+
+            hHeap = result;
+            return S_OK;
+        }
+
+        #endregion
         #region GetThreadContext
 
         public static void GetThreadContext(IntPtr hThread, IntPtr lpContext) =>
@@ -177,6 +200,22 @@ namespace ChaosLib
             var result = Native.GetThreadContext(hThread, lpContext);
 
             return result ? S_OK : (HRESULT) Marshal.GetHRForLastWin32Error();
+        }
+
+        #endregion
+        #region HeapFree
+
+        public static void HeapFree(IntPtr hHeap, int dwFlags, IntPtr lpMem) =>
+            TryHeapFree(hHeap, dwFlags, lpMem).ThrowOnNotOK();
+
+        public static HRESULT TryHeapFree(IntPtr hHeap, int dwFlags, IntPtr lpMem)
+        {
+            var result = Native.HeapFree(hHeap, dwFlags, lpMem);
+
+            if (!result)
+                return (HRESULT) Marshal.GetHRForLastWin32Error();
+
+            return S_OK;
         }
 
         #endregion
@@ -320,6 +359,18 @@ namespace ChaosLib
         }
 
         #endregion
+        #region SetEvent
+
+        public static void SetEvent(IntPtr hEvent) => TrySetEvent(hEvent).ThrowOnNotOK();
+
+        public static HRESULT TrySetEvent(IntPtr hEvent)
+        {
+            var result = Native.SetEvent(hEvent);
+
+            return result ? S_OK : (HRESULT) Marshal.GetHRForLastWin32Error();
+        }
+
+        #endregion
         #region SuspendThread
 
         public static void SuspendThread(IntPtr hThread)
@@ -342,6 +393,12 @@ namespace ChaosLib
 
             return result;
         }
+
+        #endregion
+        #region WaitForSingleObject
+
+        public static WAIT WaitForSingleObject(IntPtr hHandle, int dwMilliseconds) =>
+            Native.WaitForSingleObject(hHandle, dwMilliseconds);
 
         #endregion
         #region WriteProcessMemory

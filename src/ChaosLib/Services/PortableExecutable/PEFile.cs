@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 
 namespace ChaosLib.Metadata
 {
@@ -39,6 +40,8 @@ namespace ChaosLib.Metadata
         /// This value is pointed to by <see cref="ImageOptionalHeader.ExportTableDirectory"/>.
         /// </summary>
         IImageExportDirectory ExportDirectory { get; }
+
+        IImageImportDescriptorInfo[] ImportDirectory { get; }
 
         IImageCor20Header Cor20Header { get; }
 
@@ -101,6 +104,8 @@ namespace ChaosLib.Metadata
         /// <inheritdoc />
         public IImageExportDirectory ExportDirectory { get; }
 
+        public IImageImportDescriptorInfo[] ImportDirectory { get; }
+
         public IImageCor20Header Cor20Header { get; }
 
         public IImageDebugDirectoryInfo DebugDirectoryInfo { get; }
@@ -138,6 +143,11 @@ namespace ChaosLib.Metadata
                 Cor20Header = ReadCor20Header(reader);
 
             ExportDirectory = ReadExportDirectory(reader);
+            ImportDirectory = ReadImportDirectory(reader);
+            //BoundImportDirectory = ReadBoundImportDirectory(reader);
+            //ImportAddressTableDirectory = ReadImportAddressTableDirectory(reader);
+            //DelayImportDirectory = ReadDelayImportDirectory(reader);
+
             DebugDirectoryInfo = new ImageDebugDirectoryInfo(this, reader);
             ResourceDirectoryInfo = new ImageResourceDirectoryInfo(this, reader);
         }
@@ -176,6 +186,33 @@ namespace ChaosLib.Metadata
 
             reader.Seek(offset);
             return new ImageExportDirectory(this, reader);
+        }
+
+        private IImageImportDescriptorInfo[] ReadImportDirectory(PEBinaryReader reader)
+        {
+            int offset;
+
+            if (!TryGetDirectoryOffset(OptionalHeader.ImportTableDirectory, out offset, true))
+                return null;
+
+            reader.Seek(offset);
+
+            var rawResults = new List<ImageImportDescriptor>();
+
+            while (true)
+            {
+                var newItem = new ImageImportDescriptor(reader);
+
+                //The last item is all 0's. We certainly expect the name should have a value, so we look at that
+                if (newItem.Name == 0)
+                    break;
+
+                rawResults.Add(newItem);
+            }
+
+            var results = rawResults.Select(v => (IImageImportDescriptorInfo) new ImageImportDescriptorInfo(v, this, reader)).ToArray();
+
+            return results;
         }
 
         #region Helpers
