@@ -7,6 +7,12 @@ using ClrDebug.DIA;
 namespace ChaosLib
 {
     [UnmanagedFunctionPointer(CallingConvention.Winapi)]
+    public delegate bool PSYM_ENUMMODULES_CALLBACK64(
+        [In, MarshalAs(UnmanagedType.LPStr)] string ModuleName,
+        [In] long BaseOfDll,
+        [In] IntPtr UserContext);
+
+    [UnmanagedFunctionPointer(CallingConvention.Winapi)]
     public delegate bool PSYM_ENUMERATESYMBOLS_CALLBACK(
         [In] IntPtr pSymInfo,
         [In] int SymbolSize,
@@ -91,11 +97,30 @@ namespace ChaosLib
                 [In] bool fInvadeProcess);
 
             [DllImport(dbghelp, SetLastError = true)]
+            public static extern bool SymEnumerateModules64(
+                [In] IntPtr hProcess,
+                [In, MarshalAs(UnmanagedType.FunctionPtr)] PSYM_ENUMMODULES_CALLBACK64 EnumModulesCallback,
+                [In] IntPtr UserContext);
+
+            [DllImport(dbghelp, SetLastError = true)]
             internal static extern bool SymFromAddr(
                 [In] IntPtr hProcess,
-                [In] ulong address,
-                [Out] out long displacement,
-                [Out] IntPtr pSymbolInfo);
+                [In] ulong Address,
+                [Out] out long Displacement,
+                [Out] IntPtr Symbol);
+
+            [DllImport(dbghelp, SetLastError = true)]
+            internal static extern bool SymFromIndex(
+                [In] IntPtr hProcess,
+                [In] long BaseOfDll,
+                [In] int Index,
+                [Out] IntPtr Symbol);
+
+            [DllImport(dbghelp, SetLastError = true)]
+            internal static extern bool SymFromName(
+                [In] IntPtr hProcess,
+                [In, MarshalAs(UnmanagedType.LPStr)] string Name,
+                [Out] IntPtr Symbol);
 
             [DllImport(dbghelp, SetLastError = true)]
             public static extern IntPtr SymFunctionTableAccess64(
@@ -114,12 +139,19 @@ namespace ChaosLib
                 [In, Out] ref IMAGEHLP_MODULE64 ModuleInfo);
 
             [DllImport(dbghelp, SetLastError = true)]
+            internal static extern bool SymGetTypeFromName(
+                [In] IntPtr hProcess,
+                [In] long BaseOfDll,
+                [In, MarshalAs(UnmanagedType.LPStr)] string Name,
+                [Out] IntPtr Symbol);
+
+            [DllImport(dbghelp, SetLastError = true)]
             internal static extern bool SymGetTypeInfo(
                 [In] IntPtr hProcess,
-                [In] ulong ModBase,
+                [In] long ModBase,
                 [In] int TypeId,
                 [In] IMAGEHLP_SYMBOL_TYPE_INFO GetType,
-                [Out] out IntPtr pInfo);
+                [Out] IntPtr pInfo);
 
             [DllImport(dbghelp, SetLastError = true)]
             internal static extern ulong SymLoadModuleExW(
@@ -160,6 +192,18 @@ namespace ChaosLib
             internal static extern bool SymUnloadModule64(
                 [In] IntPtr hProcess,
                 [In] long BaseOfDll);
+
+            [DllImport(dbghelp, SetLastError = true)]
+            public static extern bool SymGetDiaSession(
+                [In] IntPtr hProcess,
+                [In] long modBase,
+                [Out, MarshalAs(UnmanagedType.Interface)] out IDiaSession session);
+
+            [DllImport(dbghelp, SetLastError = true)]
+            public static extern bool SymGetDiaSource(
+                [In] IntPtr hProcess,
+                [In] long modBase,
+                [Out, MarshalAs(UnmanagedType.Interface)] out IDiaDataSource dataSource);
 
             //stackdbg is a WinDbg extension exported by dbghelp that can be used
             //for toggling stack trace debugging on and off

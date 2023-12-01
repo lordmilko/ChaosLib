@@ -11,7 +11,7 @@ namespace ChaosLib
         public fixed ulong Reserved[2];
         public int Index;
         public int Size;
-        public ulong ModBase;
+        public long ModBase;
         public SymFlag Flags;
         public ulong Value;
         public ulong Address;

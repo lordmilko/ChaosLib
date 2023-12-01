@@ -147,6 +147,25 @@ namespace ChaosLib
         }
 
         #endregion
+        #region GetModuleHandleW
+
+        public static IntPtr GetModuleHandleW(string lpModuleName)
+        {
+            GetModuleHandleW(lpModuleName, out var hModule).ThrowOnNotOK();
+            return hModule;
+        }
+
+        public static HRESULT GetModuleHandleW(string lpModuleName, out IntPtr hModule)
+        {
+            hModule = Native.GetModuleHandleW(lpModuleName);
+
+            if (hModule == IntPtr.Zero)
+                return (HRESULT) Marshal.GetHRForLastWin32Error();
+
+            return HRESULT.S_OK;
+        }
+
+        #endregion
         #region GetProcAddress
 
         /// <summary>

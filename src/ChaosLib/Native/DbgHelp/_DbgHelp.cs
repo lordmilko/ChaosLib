@@ -41,6 +41,29 @@ namespace ChaosLib
         }
 
         #endregion
+        #region SymGetDiaSession
+
+        public static DiaSession SymGetDiaSession(IntPtr hProcess, long modBase)
+        {
+            TrySymGetDiaSession(hProcess, modBase, out var session).ThrowOnNotOK();
+            return session;
+        }
+
+        public static HRESULT TrySymGetDiaSession(IntPtr hProcess, long modBase, out DiaSession session)
+        {
+            var result = Native.SymGetDiaSession(hProcess, modBase, out var raw);
+
+            if (!result)
+            {
+                session = null;
+                return (HRESULT) Marshal.GetHRForLastWin32Error();
+            }
+
+            session = raw != null ? new DiaSession(raw) : null;
+            return HRESULT.S_OK;
+        }
+
+        #endregion
         #region SymGetModuleInfo64
 
         public static IMAGEHLP_MODULE64 SymGetModuleInfo64(IntPtr hProcess, long qwAddr)
@@ -65,6 +88,106 @@ namespace ChaosLib
         }
 
         #endregion
+        #region SymGetTypeFromName
+
+        public static SymbolInfo SymGetTypeFromName(IntPtr hProcess, long BaseOfDll, string Name)
+        {
+            TrySymGetTypeFromName(hProcess, BaseOfDll, Name, out var symbol).ThrowOnNotOK();
+            return symbol;
+        }
+
+        public static unsafe HRESULT TrySymGetTypeFromName(IntPtr hProcess, long BaseOfDll, string Name, out SymbolInfo Symbol)
+        {
+            IntPtr buffer = IntPtr.Zero;
+
+            try
+            {
+                buffer = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(SYMBOL_INFO)) + MaxNameLength);
+
+                SYMBOL_INFO* pNative = (SYMBOL_INFO*) buffer;
+                pNative->SizeOfStruct = Marshal.SizeOf(typeof(SYMBOL_INFO));
+                pNative->MaxNameLen = MaxNameLength; // Characters, not bytes!
+
+                var result = Native.SymGetTypeFromName(hProcess, BaseOfDll, Name, buffer);
+
+                if (!result)
+                {
+                    Symbol = default;
+                    return (HRESULT) Marshal.GetHRForLastWin32Error();
+                }
+
+                Symbol = new SymbolInfo(pNative);
+                return HRESULT.S_OK;
+            }
+            finally
+            {
+                if (buffer != IntPtr.Zero)
+                    Marshal.FreeHGlobal(buffer);
+            }
+        }
+
+        #endregion
+        #region SymGetTypeInfo
+
+        public static IntPtr SymGetTypeInfo(
+            IntPtr hProcess,
+            long ModBase,
+            int TypeId,
+            IMAGEHLP_SYMBOL_TYPE_INFO GetType)
+        {
+            IntPtr pInfo = IntPtr.Zero;
+            TrySymGetTypeInfo(hProcess, ModBase, TypeId, GetType, ref pInfo).ThrowOnNotOK();
+            return pInfo;
+        }
+
+        public static unsafe HRESULT TrySymGetTypeInfo(
+            IntPtr hProcess,
+            long ModBase,
+            int TypeId,
+            IMAGEHLP_SYMBOL_TYPE_INFO GetType,
+            ref IntPtr pInfo)
+        {
+            var innerPtr = pInfo;
+
+            MemoryBuffer buffer = null;
+
+            //We have a problem: generally speaking the value emitted by SymGetTypeInfo will fit into an IntPtr,
+            //but in some scenarios we need to be able to pass in a complex buffer or an arbitrary size. Thus, we say that
+            //if the caller specified such a complex buffer, we'll use it. Otherwise, we'll create our own IntPtr sized
+            //buffer
+
+            if (innerPtr == IntPtr.Zero)
+            {
+                buffer = new MemoryBuffer(IntPtr.Size);
+                innerPtr = buffer;
+            }
+
+            try
+            {
+                var result = Native.SymGetTypeInfo(
+                    hProcess,
+                    ModBase,
+                    TypeId,
+                    GetType,
+                    innerPtr
+                );
+
+                //SymGetTypeInfo erroneously sets the HRESULT from DIA to be the last error
+                if (!result)
+                    return (HRESULT)Marshal.GetLastWin32Error();
+
+                if (buffer != null)
+                    pInfo = *(IntPtr*) innerPtr;
+
+                return HRESULT.S_OK;
+            }
+            finally
+            {
+                buffer?.Dispose();
+            }
+        }
+
+        #endregion
         #region SymFromAddr
 
         public static SymFromAddrResult SymFromAddr(IntPtr hProcess, long address)
@@ -82,7 +205,7 @@ namespace ChaosLib
             {
                 buffer = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(SYMBOL_INFO)) + MaxNameLength);
 
-                SYMBOL_INFO* pNative = (SYMBOL_INFO*)buffer;
+                SYMBOL_INFO* pNative = (SYMBOL_INFO*) buffer;
                 pNative->SizeOfStruct = Marshal.SizeOf(typeof(SYMBOL_INFO));
                 pNative->MaxNameLen = MaxNameLength; // Characters, not bytes!
 
@@ -96,6 +219,84 @@ namespace ChaosLib
                 }
 
                 result = new SymFromAddrResult(displacement, new SymbolInfo(pNative));
+                return HRESULT.S_OK;
+            }
+            finally
+            {
+                if (buffer != IntPtr.Zero)
+                    Marshal.FreeHGlobal(buffer);
+            }
+        }
+
+        #endregion
+        #region SymFromIndex
+
+        public static SymbolInfo SymFromIndex(IntPtr hProcess, long BaseOfDll, int Index)
+        {
+            TrySymFromIndex(hProcess, BaseOfDll, Index, out var symbol).ThrowOnNotOK();
+            return symbol;
+        }
+
+        public static unsafe HRESULT TrySymFromIndex(IntPtr hProcess, long BaseOfDll, int Index, out SymbolInfo Symbol)
+        {
+            IntPtr buffer = IntPtr.Zero;
+
+            try
+            {
+                buffer = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(SYMBOL_INFO)) + MaxNameLength);
+
+                SYMBOL_INFO* pNative = (SYMBOL_INFO*)buffer;
+                pNative->SizeOfStruct = Marshal.SizeOf(typeof(SYMBOL_INFO));
+                pNative->MaxNameLen = MaxNameLength; // Characters, not bytes!
+
+                var innerResult = Native.SymFromIndex(hProcess, BaseOfDll, Index, buffer);
+
+                if (!innerResult)
+                {
+                    Symbol = default;
+                    return (HRESULT) Marshal.GetHRForLastWin32Error();
+                }
+
+                Symbol = new SymbolInfo(pNative);
+                return HRESULT.S_OK;
+            }
+            finally
+            {
+                if (buffer != IntPtr.Zero)
+                    Marshal.FreeHGlobal(buffer);
+            }
+        }
+
+        #endregion
+        #region SymFromName
+
+        public static SymbolInfo SymFromName(IntPtr hProcess, string Name)
+        {
+            TrySymFromName(hProcess, Name, out var Symbol).ThrowOnNotOK();
+            return Symbol;
+        }
+
+        public static unsafe HRESULT TrySymFromName(IntPtr hProcess, string Name, out SymbolInfo Symbol)
+        {
+            IntPtr buffer = IntPtr.Zero;
+
+            try
+            {
+                buffer = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(SYMBOL_INFO)) + MaxNameLength);
+
+                SYMBOL_INFO* pNative = (SYMBOL_INFO*) buffer;
+                pNative->SizeOfStruct = Marshal.SizeOf(typeof(SYMBOL_INFO));
+                pNative->MaxNameLen = MaxNameLength; // Characters, not bytes!
+
+                var result = Native.SymFromName(hProcess, Name, buffer);
+
+                if (!result)
+                {
+                    Symbol = default;
+                    return (HRESULT) Marshal.GetHRForLastWin32Error();
+                }
+
+                Symbol = new SymbolInfo(pNative);
                 return HRESULT.S_OK;
             }
             finally

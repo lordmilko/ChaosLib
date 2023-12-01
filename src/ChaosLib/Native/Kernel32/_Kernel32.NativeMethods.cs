@@ -58,6 +58,10 @@ namespace ChaosLib
             public static extern bool GetExitCodeThread(IntPtr hThread, out int lpExitCode);
 
             [DllImport(kernel32, SetLastError = true)]
+            public static extern IntPtr GetModuleHandleW(
+                [In, MarshalAs(UnmanagedType.LPWStr)] string lpModuleName);
+
+            [DllImport(kernel32, SetLastError = true)]
             public static extern IntPtr GetProcAddress(IntPtr hModule, string lpProcName);
 
             [DllImport(kernel32, SetLastError = true)]

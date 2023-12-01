@@ -11,7 +11,11 @@ namespace ChaosLib
 
         public ulong Address { get; }
 
-        public ulong ModuleBase { get; }
+        public int TypeIndex { get; }
+
+        public int Index { get; }
+
+        public long ModuleBase { get; }
 
         public SymFlag Flags { get; }
 
@@ -22,6 +26,8 @@ namespace ChaosLib
         public SymbolInfo(SYMBOL_INFO* symbolInfo)
         {
             Address = symbolInfo->Address;
+            TypeIndex = symbolInfo->TypeIndex;
+            Index = symbolInfo->Index;
             ModuleBase = symbolInfo->ModBase;
             Flags = symbolInfo->Flags;
             Tag = symbolInfo->Tag;

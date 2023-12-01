@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
+	<Import Project="$(Build)ClrDebug.props" />
+
+	<PropertyGroup>
 	  <TargetFramework>net472</TargetFramework>
 
     <IsPackable>false</IsPackable>
@@ -11,6 +13,10 @@
 		<PackageReference Include="MSTest.TestAdapter" Version="$(MSTestVersion)" />
 		<PackageReference Include="MSTest.TestFramework" Version="$(MSTestVersion)" />
 		<PackageReference Include="coverlet.collector" Version="$(CoverletVersion)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ChaosLib\ChaosLib.csproj" />
   </ItemGroup>
 
 </Project>
