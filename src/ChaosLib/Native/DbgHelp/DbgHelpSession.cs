@@ -39,7 +39,8 @@ namespace ChaosLib
          *
          * */
 
-        private PSYMBOL_REGISTERED_CALLBACK64 callbackDispatcher;
+        private DbgHelpSymbolCallback callbackInstance;
+        private PSYMBOL_REGISTERED_CALLBACK64 callback; //Without this it seems the delegate can get GC'd
         private PSYMBOL_FUNCENTRY_CALLBACK64 functionEntryCallbackDispatcher;
         private bool disposed;
 
@@ -49,31 +50,18 @@ namespace ChaosLib
 
         #region Callback
 
-        private PSYMBOL_REGISTERED_CALLBACK64 callback;
-
-        public PSYMBOL_REGISTERED_CALLBACK64 Callback
+        public DbgHelpSymbolCallback Callback
         {
-            get => callback;
-            set
+            get
             {
-                if (callback == null)
+                if (callbackInstance == null)
                 {
-                    if (callbackDispatcher == null)
-                    {
-                        callbackDispatcher = (a, b, c, d) => Callback?.Invoke(a, b, c, d) == true;
-                        DbgHelp.SymRegisterCallback64(hProcess, callbackDispatcher);
-                    }
-
-                    callback = value;
+                    callbackInstance = new DbgHelpSymbolCallback();
+                    callback = callbackInstance.CallbackHandler;
+                    DbgHelp.SymRegisterCallback64(hProcess, callback);
                 }
-                else
-                {
-                    //We already have a value
-                    if (value != null)
-                        throw new NotImplementedException("Cannot set callback: a callback has already been set.");
 
-                    callback = null;
-                }
+                return callbackInstance;
             }
         }
 

@@ -54,6 +54,9 @@ namespace ChaosLib
             [DllImport(kernel32, SetLastError = true)]
             public static extern bool FreeLibrary(IntPtr hLibModule);
 
+            [DllImport(kernel32)]
+            public static extern int GetCurrentThreadId();
+
             [DllImport(kernel32, SetLastError = true)]
             public static extern bool GetExitCodeThread(IntPtr hThread, out int lpExitCode);
 
@@ -66,6 +69,9 @@ namespace ChaosLib
 
             [DllImport(kernel32, SetLastError = true)]
             public static extern IntPtr GetProcessHeap();
+
+            [DllImport(kernel32, SetLastError = true)]
+            public static extern int GetProcessId([In] IntPtr Process);
 
             [DllImport(kernel32, SetLastError = true)]
             public static extern bool GetThreadContext(IntPtr hThread, IntPtr lpContext);

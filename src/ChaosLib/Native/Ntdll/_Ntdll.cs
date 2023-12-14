@@ -28,5 +28,26 @@ namespace ChaosLib
 
             return Marshal.PtrToStructure<T>(buffer);
         }
+
+        public static T NtQueryInformationThread<T>(
+            IntPtr ThreadHandle,
+            THREADINFOCLASS ThreadInformationClass)
+        {
+            var size = Marshal.SizeOf<T>();
+            using var buffer = new MemoryBuffer(size);
+
+            var status = Native.NtQueryInformationThread(
+                ThreadHandle,
+                ThreadInformationClass,
+                buffer,
+                size,
+                out _
+            );
+
+            if (status != NTSTATUS.STATUS_SUCCESS)
+                throw new InvalidOperationException($"Query failed with status {status}");
+
+            return Marshal.PtrToStructure<T>(buffer);
+        }
     }
 }

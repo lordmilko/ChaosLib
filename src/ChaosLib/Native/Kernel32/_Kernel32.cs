@@ -147,6 +147,9 @@ namespace ChaosLib
         }
 
         #endregion
+
+        public static int GetCurrentThreadId() => Native.GetCurrentThreadId();
+
         #region GetModuleHandleW
 
         public static IntPtr GetModuleHandleW(string lpModuleName)
@@ -206,6 +209,19 @@ namespace ChaosLib
 
             hHeap = result;
             return S_OK;
+        }
+
+        #endregion
+        #region GetProcessId
+
+        public static int GetProcessId(IntPtr Process)
+        {
+            var result = Native.GetProcessId(Process);
+
+            if (result == 0)
+                ((HRESULT) Marshal.GetHRForLastWin32Error()).ThrowOnNotOK();
+
+            return result;
         }
 
         #endregion
@@ -292,17 +308,17 @@ namespace ChaosLib
         #endregion
         #region OpenThread
 
-        public static IntPtr OpenThread(ThreadAccess dwDesiredAccess, bool bInheritHandle, int dwThreadId)
+        public static SafeThreadHandle OpenThread(ThreadAccess dwDesiredAccess, bool bInheritHandle, int dwThreadId)
         {
             TryOpenThread(dwDesiredAccess, bInheritHandle, dwThreadId, out var hThread).ThrowOnNotOK();
             return hThread;
         }
 
-        public static HRESULT TryOpenThread(ThreadAccess dwDesiredAccess, bool bInheritHandle, int dwThreadId, out IntPtr hThread)
+        public static HRESULT TryOpenThread(ThreadAccess dwDesiredAccess, bool bInheritHandle, int dwThreadId, out SafeThreadHandle hThread)
         {
             hThread = Native.OpenThread(dwDesiredAccess, bInheritHandle, dwThreadId);
 
-            return hThread == IntPtr.Zero ? (HRESULT)Marshal.GetHRForLastWin32Error() : S_OK;
+            return hThread == IntPtr.Zero ? (HRESULT) Marshal.GetHRForLastWin32Error() : S_OK;
         }
 
         #endregion

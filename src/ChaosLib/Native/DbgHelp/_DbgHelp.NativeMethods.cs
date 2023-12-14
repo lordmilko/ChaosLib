@@ -27,7 +27,7 @@ namespace ChaosLib
     [UnmanagedFunctionPointer(CallingConvention.Winapi)]
     public delegate bool PSYMBOL_REGISTERED_CALLBACK64(
         [In] IntPtr hProcess,
-        [In] int ActionCode,
+        [In] CBA ActionCode,
         [In] long CallbackData,
         [In] long UserContext);
 

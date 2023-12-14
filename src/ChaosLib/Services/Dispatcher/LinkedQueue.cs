@@ -1,27 +1,40 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Threading;
 
 namespace ChaosLib
 {
     //We need to be able to remove items from an arbitrary position in the queue when an item is aborted.
     //Thus, we have a custom queue based on a linked list
-    class LinkedQueue<T> : IProducerConsumerCollection<T>
+    class LinkedQueue<T>
     {
         private LinkedList<T> list = new LinkedList<T>();
         private object objLock = new object();
+        private CountEvent countEvent = new CountEvent();
 
-        bool IProducerConsumerCollection<T>.TryAdd(T item)
+        public WaitHandle WaitHandle => countEvent.WaitHandle;
+
+        public T Take()
+        {
+            if ((TryTake(out var item)))
+                return item;
+
+            throw new InvalidOperationException("Attempted to Take when queue was empty.");
+        }
+
+        public void Add(T item)
         {
             lock (objLock)
             {
+                Debug.Assert(countEvent.CurrentCount == list.Count, "Prior to adding an item, the event and list queue were out of sync");
                 list.AddLast(new LinkedListNode<T>(item));
-                return true;
+                countEvent.Add();
+                Debug.Assert(countEvent.CurrentCount == list.Count, "Upon adding an item, the event and list queue became out of sync");
             }
         }
 
-        bool IProducerConsumerCollection<T>.TryTake(out T item)
+        public bool TryTake(out T item)
         {
             lock (objLock)
             {
@@ -31,8 +44,11 @@ namespace ChaosLib
                     return false;
                 }
 
+                Debug.Assert(countEvent.CurrentCount == list.Count, "Prior to removing an item, the event and list queue were out of sync");
                 item = list.First.Value;
                 list.RemoveFirst();
+                countEvent.Set();
+                Debug.Assert(countEvent.CurrentCount == list.Count, "Upon removing an item, the event and list queue were out of sync");
                 return true;
             }
         }
@@ -40,17 +56,17 @@ namespace ChaosLib
         public bool Remove(T item)
         {
             lock (objLock)
-                return list.Remove(item);
+            {
+                var removed = list.Remove(item);
+
+                if (removed)
+                    countEvent.Set();
+
+                return removed;
+            }
         }
 
-        #region ICollection
-
-        void ICollection.CopyTo(Array array, int index)
-        {
-            throw new NotImplementedException();
-        }
-
-        int ICollection.Count
+        public int Count
         {
             get
             {
@@ -58,34 +74,5 @@ namespace ChaosLib
                     return list.Count;
             }
         }
-
-        bool ICollection.IsSynchronized => false;
-
-        object ICollection.SyncRoot => throw new NotSupportedException();
-
-        #endregion
-        #region IProducerConsumerCollection
-
-        void IProducerConsumerCollection<T>.CopyTo(T[] array, int index)
-        {
-            throw new NotImplementedException();
-        }
-
-        T[] IProducerConsumerCollection<T>.ToArray()
-        {
-            throw new NotImplementedException();
-        }
-
-        #endregion
-        #region IEnumerable
-
-        public IEnumerator<T> GetEnumerator()
-        {
-            throw new NotImplementedException();
-        }
-
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
-        #endregion
     }
 }

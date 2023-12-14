@@ -1,4 +1,5 @@
-﻿using System.Threading;
+﻿using System.Diagnostics;
+using System.Threading;
 
 namespace ChaosLib
 {
@@ -39,6 +40,12 @@ namespace ChaosLib
             while (true)
             {
                 var count = CurrentCount;
+
+                Debug.Assert(currentCount >= 0, "Set should never be called when count is already 0");
+
+                //In Release builds, just break out
+                if (count == 0)
+                    break;
 
                 if (Interlocked.CompareExchange(ref this.currentCount, count - 1, count) != count)
                     spinWait.SpinOnce();

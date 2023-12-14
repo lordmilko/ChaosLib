@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Threading;
 
 namespace ChaosLib
@@ -26,13 +25,11 @@ namespace ChaosLib
 
         public event EventHandler ShutdownFinished;
 
-        private LinkedQueue<DispatcherOperation> rawQueue;
-        private BlockingCollection<DispatcherOperation> queue;
+        private LinkedQueue<DispatcherOperation> queue;
 
         private bool startingShutdown;
         internal object objLock = new object();
         CancellationTokenSource cts = new CancellationTokenSource();
-        private CountEvent countEvent = new CountEvent();
 
         public EventHandler OperationQueued;
 
@@ -55,8 +52,7 @@ namespace ChaosLib
         public Dispatcher()
         {
             Thread = Thread.CurrentThread;
-            rawQueue = new LinkedQueue<DispatcherOperation>();
-            queue = new BlockingCollection<DispatcherOperation>(rawQueue);
+            queue = new LinkedQueue<DispatcherOperation>();
         }
 
         public void BeginInvokeShutdown() => InvokeAsync(ShutdownCallbackInternal);
@@ -111,7 +107,7 @@ namespace ChaosLib
         {
             lock (objLock)
             {
-                var result = rawQueue.Remove(operation);
+                var result = queue.Remove(operation);
 
                 if (result)
                     operation.Status = DispatcherOperationStatus.Aborted;
@@ -231,8 +227,7 @@ namespace ChaosLib
             {
                 if (!cancellationToken.IsCancellationRequested && !HasShutdownFinished && !Environment.HasShutdownStarted)
                 {
-                    queue.Add(operation, cancellationToken);
-                    countEvent.Add();
+                    queue.Add(operation);
                     OperationQueued?.Invoke(this, EventArgs.Empty);
 
                     succeeded = true;
@@ -272,13 +267,12 @@ namespace ChaosLib
                     break;
                 }
 
-                WaitHandle.WaitAny(new[] {merged.Token.WaitHandle, countEvent.WaitHandle});
+                WaitHandle.WaitAny(new[] {merged.Token.WaitHandle, queue.WaitHandle});
 
                 if (merged.Token.IsCancellationRequested)
                     break;
 
-                var operation = queue.Take(cancellationToken);
-                countEvent.Set();
+                var operation = queue.Take();
 
                 if (HasShutdownStarted)
                 {
@@ -293,7 +287,7 @@ namespace ChaosLib
 
         public void DrainQueue()
         {
-            while (queue.TryTake(out var op, 0))
+            while (queue.TryTake(out var op))
                 op.Invoke();
         }
 
@@ -311,7 +305,7 @@ namespace ChaosLib
 
             while (!cts.IsCancellationRequested)
             {
-                WaitHandle.WaitAny(new[]{cts.Token.WaitHandle, completedEvent.WaitHandle, countEvent.WaitHandle});
+                WaitHandle.WaitAny(new[]{cts.Token.WaitHandle, completedEvent.WaitHandle, queue.WaitHandle});
 
                 if (cts.IsCancellationRequested)
                     break;
@@ -320,7 +314,6 @@ namespace ChaosLib
                     break;
 
                 var op = queue.Take();
-                countEvent.Set();
 
                 op.Invoke();
             }

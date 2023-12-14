@@ -772,7 +772,12 @@ namespace ChaosLib.Tests
             await uiOp1;
         }
 
-        private DispatcherThread CreateThread([CallerMemberName] string threadName = null) => new DispatcherThread(threadName);
+        private DispatcherThread CreateThread([CallerMemberName] string threadName = null)
+        {
+            var thread = new DispatcherThread(threadName);
+            thread.Start();
+            return thread;
+        }
 
         private void RestartApplication()
         {

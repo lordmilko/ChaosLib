@@ -36,7 +36,6 @@ namespace ChaosLib.TypedData
         {
             this.dbgHelpSession = dbgHelpSession;
             reader = new MemoryReader(dbgHelpSession.hProcess);
-
         }
 
         public DbgRemoteObject CreateObject(long address, string expr) =>

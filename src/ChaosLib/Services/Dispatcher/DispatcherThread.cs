@@ -9,22 +9,36 @@ namespace ChaosLib
     /// </summary>
     public class DispatcherThread : IDisposable
     {
-        public Dispatcher Dispatcher { get; private set; }
+        private Dispatcher dispatcher;
+
+        /// <summary>
+        /// Gets the <see cref="Dispatcher"/> object that runs inside the remote thread.<para/>
+        /// This value is <see langword="null"/> until <see cref="Start"/> has been called.
+        /// </summary>
+        public Dispatcher Dispatcher
+        {
+            get
+            {
+                if (dispatcher == null)
+                    throw new InvalidOperationException($"Cannot access {nameof(Dispatcher)}: {nameof(DispatcherThread)} has not yet been started.");
+
+                return dispatcher;
+            }
+        }
 
         public int ManagedThreadId => thread.ManagedThreadId;
 
         private Thread thread;
+        private ManualResetEventSlim manualResetEventSlim = new ManualResetEventSlim(false);
         private CancellationTokenSource cts = new CancellationTokenSource();
 
         public DispatcherThread(string name, ThreadStart threadProc = null)
         {
-            var manualResetEventSlim = new ManualResetEventSlim(false);
-
             thread = new Thread(() =>
             {
-                Dispatcher = new Dispatcher();
+                dispatcher = new Dispatcher();
 
-                cts.Token.Register(Dispatcher.BeginInvokeShutdown);
+                cts.Token.Register(dispatcher.BeginInvokeShutdown);
 
                 manualResetEventSlim.Set();
 
@@ -33,7 +47,7 @@ namespace ChaosLib
                     if (threadProc != null)
                         threadProc();
                     else
-                        Dispatcher.Run(cts.Token);
+                        dispatcher.Run(cts.Token);
                 }
             });
 
@@ -41,7 +55,10 @@ namespace ChaosLib
             //don't prevent the process from terminating
             thread.IsBackground = true;
             thread.Name = name;
+        }
 
+        public void Start()
+        {
             thread.Start();
 
             manualResetEventSlim.Wait();
@@ -82,7 +99,9 @@ namespace ChaosLib
             //call InvokeShutdown() here will deadlock. As such, we "nicely request" a
             //shutdown if possible, and then wait for the dispatcher thread to terminate
             //(the true sign of a successful shutdown)
-            Dispatcher.BeginInvokeShutdown();
+            dispatcher?.BeginInvokeShutdown();
+
+            manualResetEventSlim?.Dispose();
 
             if (Thread.CurrentThread.ManagedThreadId != thread.ManagedThreadId)
                 thread.Join();

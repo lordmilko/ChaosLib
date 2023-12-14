@@ -7,11 +7,25 @@ namespace ChaosLib
 {
     public class MemoryReader
     {
+        public bool Is32Bit { get; }
+
+        public int PointerSize { get; }
+
         private IntPtr hProcess;
 
         public MemoryReader(IntPtr hProcess)
         {
             this.hProcess = hProcess;
+            Is32Bit = Kernel32.IsWow64ProcessOrDefault(hProcess);
+            PointerSize = Is32Bit ? 4 : 8;
+        }
+
+        public long ReadPointer(long address)
+        {
+            if (Is32Bit)
+                return this.ReadVirtual<int>(address);
+
+            return this.ReadVirtual<long>(address);
         }
 
         public unsafe HRESULT ReadVirtual(long address, IntPtr buffer, int bytesRequested, out int bytesRead)
