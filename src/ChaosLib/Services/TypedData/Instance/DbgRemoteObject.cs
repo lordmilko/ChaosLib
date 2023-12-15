@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Diagnostics;
+using ClrDebug.DIA;
 
 namespace ChaosLib.TypedData
 {
@@ -25,7 +26,7 @@ namespace ChaosLib.TypedData
                 {
                     var addr = Address + field.Offset;
 
-                    if (field.Type.Tag == ClrDebug.DIA.SymTagEnum.PointerType)
+                    if (field.Type.Tag == SymTagEnum.PointerType)
                         addr = provider.ReadPointer(addr);
 
                     results.Add(DbgRemoteField.New(addr, field, this, provider));

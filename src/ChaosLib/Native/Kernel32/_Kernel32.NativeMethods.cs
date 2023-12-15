@@ -12,6 +12,10 @@ namespace ChaosLib
         {
             private const string kernel32 = "kernel32.dll";
 
+            [DllImport(kernel32, CharSet = CharSet.Unicode, SetLastError = true)]
+            public static extern IntPtr AddDllDirectory(
+                [In, MarshalAs(UnmanagedType.LPWStr)] string NewDirectory);
+
             [DllImport(kernel32, SetLastError = true)]
             public static extern bool CloseHandle(IntPtr handle);
 
@@ -41,7 +45,7 @@ namespace ChaosLib
                 [In] ref STARTUPINFOW lpStartupInfo,
                 out PROCESS_INFORMATION lpProcessInformation);
 
-            [DllImport(kernel32)]
+            [DllImport(kernel32, SetLastError = true)]
             public static extern IntPtr CreateRemoteThread(
                 IntPtr hProcess,
                 IntPtr lpThreadAttributes,
@@ -52,6 +56,20 @@ namespace ChaosLib
                 out IntPtr lpThreadId);
 
             [DllImport(kernel32, SetLastError = true)]
+            public static extern IntPtr CreateToolhelp32Snapshot(
+                [In] TH32CS dwFlags,
+                [In] int th32ProcessID);
+
+            //In PSAPI_VERSION 2 this function is exported from Kernel32 with a different name
+            [DllImport(kernel32, EntryPoint = "K32EnumProcessModulesEx", SetLastError = true)]
+            public static extern bool EnumProcessModulesEx(
+                [In] IntPtr hProcess,
+                [Out] IntPtr lphModule,
+                [In] int cb,
+                [Out] out int lpcbNeeded,
+                [In] LIST_MODULES dwFilterFlag);
+
+            [DllImport(kernel32, SetLastError = true)]
             public static extern bool FreeLibrary(IntPtr hLibModule);
 
             [DllImport(kernel32)]
@@ -59,6 +77,13 @@ namespace ChaosLib
 
             [DllImport(kernel32, SetLastError = true)]
             public static extern bool GetExitCodeThread(IntPtr hThread, out int lpExitCode);
+
+            [DllImport(kernel32, EntryPoint = "K32GetModuleFileNameExW", SetLastError = true)]
+            public static extern int GetModuleFileNameExW(
+                [In] IntPtr hProcess,
+                [In, Optional] IntPtr hModule,
+                [Out, MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U2)] char[] lpFileName,
+                [In] int nSize);
 
             [DllImport(kernel32, SetLastError = true)]
             public static extern IntPtr GetModuleHandleW(
@@ -95,6 +120,16 @@ namespace ChaosLib
             public static extern IntPtr LoadLibrary(string lpLibFileName);
 
             [DllImport(kernel32, SetLastError = true)]
+            public static extern bool Module32First(
+                [In] IntPtr hSnapshot,
+                [In, Out] ref MODULEENTRY32 lpme);
+
+            [DllImport(kernel32, SetLastError = true)]
+            public static extern bool Module32Next(
+                [In] IntPtr hSnapshot,
+                [In, Out] ref MODULEENTRY32 lpme);
+
+            [DllImport(kernel32, SetLastError = true)]
             public static extern IntPtr OpenProcess(
                 ProcessAccessFlags dwDesiredAccess,
                 bool bInheritHandle,
@@ -105,11 +140,15 @@ namespace ChaosLib
 
             [DllImport(kernel32, SetLastError = true)]
             public static extern bool ReadProcessMemory(
-                IntPtr hProcess,
-                IntPtr lpBaseAddress,
+                [In] IntPtr hProcess,
+                [In] IntPtr lpBaseAddress,
                 [Out] IntPtr lpBuffer,
-                IntPtr dwSize,
-                out IntPtr lpNumberOfBytesRead);
+                [In] IntPtr dwSize,
+                [Out] out IntPtr lpNumberOfBytesRead);
+
+            [DllImport(kernel32, SetLastError = true)]
+            public static extern bool RemoveDllDirectory(
+                [In] IntPtr Cookie);
 
             [DllImport(kernel32, SetLastError = true)]
             public static extern int ResumeThread(IntPtr hThread);

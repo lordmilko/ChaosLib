@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.InteropServices;
 using ChaosLib.TypedData;
 using ClrDebug;
 using ClrDebug.DIA;
@@ -103,9 +105,74 @@ namespace ChaosLib
             if (hProcess == IntPtr.Zero)
                 throw new ArgumentNullException(nameof(hProcess));
 
+            var manualModLoad = false;
+
+            if (invadeProcess && IntPtr.Size == 8 && Kernel32.IsWow64ProcessOrDefault(hProcess))
+            {
+                /* If we're a 64-bit process trying to debug a 32-bit process, allowing DbgHelp to enumerate all modules for us
+                 * will result in Wow64 modules being included. We can tell DbgHelp to load 32-bit modules as well using
+                 * SYMOPT_INCLUDE_32BIT_MODULES but this just makes things worse: if we're trying to use typed data, we need
+                 * to calculate the offsets of fields based on the 32-bit PDB. The only way to do that is to guarantee that none
+                 * of the 64-bit modules exist in our Dbghelp session */
+
+                invadeProcess = false;
+                manualModLoad = true;
+            }
+
             this.hProcess = hProcess;
 
             DbgHelp.SymInitialize(hProcess, userSearchPath, invadeProcess);
+
+            if (manualModLoad)
+                Load32BitModulesFor64BitProcess();
+        }
+
+        private unsafe void Load32BitModulesFor64BitProcess()
+        {
+            /* We retrieve 32-bit modules, but now we have a new problem: if we try and get the file path using
+             * GetModuleFileNameExW, it will simply show DLLs as being under system32 instead of SysWOW64.
+             * Apparently GetModuleFileNameExW queries the PEB of the remote process to get the path, and
+             * a 32-bit process will think its 32-bit modules are in fact under system32.
+             *
+             * We can resolve this by querying RtlQueryProcessDebugInformation directly. This actually how
+             * DbgHelp loads its modules, however the difference here is that we ONLY load our 32-bit modules,
+             * rather than every single module we come across. */
+
+            //These are all the modules we're actually interested in
+            var x86Modules = Kernel32.EnumProcessModulesEx(hProcess, LIST_MODULES.LIST_MODULES_32BIT);
+
+            //The application itself has the same module base in both the 32-bit and 64-bit sections of the process, so we need to check
+            //to see whether we've added a module before
+            var addedModules = new HashSet<IntPtr>();
+
+            var buffer = Ntdll.RtlCreateQueryDebugBuffer();
+
+            try
+            {
+                //MODULES32 implies MODULES, so we need to filter out the retrieved modules for only the ones we're looking for
+                Ntdll.RtlQueryProcessDebugInformation(Kernel32.GetProcessId(hProcess), RTL_QUERY_PROCESS.MODULES32 | RTL_QUERY_PROCESS.NONINVASIVE, buffer);
+
+                var pModules = buffer->Modules;
+
+                for (var i = 0; i < pModules->NumberOfModules; i++)
+                {
+                    var moduleInfo = ((RTL_PROCESS_MODULE_INFORMATION*) &pModules->Modules)[i];
+
+                    if (!addedModules.Contains(moduleInfo.ImageBase) && x86Modules.Contains(moduleInfo.ImageBase))
+                    {
+                        //This is an x86 module. Load it in DbgHelp!
+                        addedModules.Add(moduleInfo.ImageBase);
+
+                        var modulePath = Marshal.PtrToStringAnsi((IntPtr) moduleInfo.FullPathName);
+
+                        AddModule(modulePath, (long) (void*) moduleInfo.ImageBase);
+                    }
+                }
+            }
+            finally
+            {
+                Ntdll.RtlDestroyQueryDebugBuffer(buffer);
+            }
         }
 
         public void AddModule(string imageName, long baseOfDll)

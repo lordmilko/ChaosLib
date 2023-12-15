@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 using ClrDebug;
+using ClrDebug.DbgEng;
 using ClrDebug.DIA;
 
 namespace ChaosLib
@@ -10,6 +11,11 @@ namespace ChaosLib
     {
         private const int MaxNameLength = 2000; //2000 characters
 
+        #region Relay
+
+        public static SYMOPT SymSetOptions(SYMOPT SymOptions) => Native.SymSetOptions(SymOptions);
+
+        #endregion
         #region SymCleanup
 
         public static void SymCleanup(IntPtr hProcess) => TrySymCleanup(hProcess).ThrowOnNotOK();

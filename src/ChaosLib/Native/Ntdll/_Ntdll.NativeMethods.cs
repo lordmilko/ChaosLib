@@ -13,7 +13,7 @@ namespace ChaosLib
     {
         private const string ntdll = "ntdll.dll";
 
-        public static class Native
+        public static unsafe class Native
         {
             [DllImport(ntdll)]
             public static extern NTSTATUS LdrRegisterDllNotification(
@@ -42,6 +42,13 @@ namespace ChaosLib
                 [In] int ThreadInformationLength,
                 [Out] out int ReturnLength);
 
+            [DllImport(ntdll)]
+            public static extern NTSTATUS NtQuerySystemInformation(
+                [In] SYSTEM_INFORMATION_CLASS SystemInformationClass,
+                [Out] IntPtr SystemInformation,
+                [In] int SystemInformationLength,
+                [Out] out int ReturnLength);
+
             //Prior to Windows 8, the return type was BOOLEAN (1 byte). Now it's LOGICAL = ULONG = 4 bytes
             [DllImport(ntdll)]
             public static extern int RtlFreeHeap(
@@ -51,6 +58,21 @@ namespace ChaosLib
 
             [DllImport(ntdll)]
             public static extern IntPtr RtlGetFunctionTableListHead();
+
+            [DllImport(ntdll)]
+            public static extern RTL_DEBUG_INFORMATION* RtlCreateQueryDebugBuffer(
+                [In] int MaximumCommit,
+                [In, MarshalAs(UnmanagedType.U1)] bool UseEventPair);
+
+            [DllImport(ntdll)]
+            public static extern NTSTATUS RtlDestroyQueryDebugBuffer(
+                [In] RTL_DEBUG_INFORMATION* Buffer);
+
+            [DllImport(ntdll)]
+            public static extern NTSTATUS RtlQueryProcessDebugInformation(
+                [In] IntPtr UniqueProcessId,
+                [In] RTL_QUERY_PROCESS Flags,
+                [Out] RTL_DEBUG_INFORMATION* Buffer);
         }
     }
 }

@@ -6,11 +6,12 @@ namespace ChaosLib
     //PEB is an ever changing and volatile structure, and is only defined here in minimal form for the purpose of retrieving the most
     //stable members. For a table that illustrates the evolution of the PEB, please see http://blog.rewolf.pl/blog/wp-content/uploads/2013/03/PEB_Evolution.pdf
     [StructLayout(LayoutKind.Sequential)]
-    public unsafe struct PEB
+    public struct PEB
     {
-        public fixed byte Reserved1[2]; //as of writing, has always been InheritedAddressSpace and ReadImageFileExecOptions
-        public byte BeingDebugged;
-        public fixed byte Reserved2[1];
+        //public fixed byte Reserved1[2]; //as of writing, has always been InheritedAddressSpace and ReadImageFileExecOptions
+        //public byte BeingDebugged;
+        //public fixed byte Reserved2[1];
+        public IntPtr Reserved1; //The first 3 members are 4 bytes, but on x64 there's 4 bytes of padding, which means in total, before Mutant is one pointer's worth
 
         public IntPtr Mutant;
         public IntPtr ImageBaseAddress;

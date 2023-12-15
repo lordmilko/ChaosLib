@@ -119,15 +119,15 @@ namespace ChaosLib.TypedData
             return result;
         }
 
-        public HRESULT TryGetPropertyValue<T>(IMAGEHLP_SYMBOL_TYPE_INFO property, out T result)
+        public unsafe HRESULT TryGetPropertyValue<T>(IMAGEHLP_SYMBOL_TYPE_INFO property, out T result)
         {
             object Convert(Type type, IntPtr value)
             {
                 if (type.IsEnum)
-                    return Enum.Parse(type, value.ToInt32().ToString());
+                    return Enum.Parse(type, ((int) (void*) value).ToString());
 
                 if (type == typeof(int))
-                    return value.ToInt32();
+                    return (int) (void*) value;
 
                 if (type == typeof(long))
                     return value.ToInt64();

@@ -1,5 +1,7 @@
 ﻿using System;
-using System.Runtime.InteropServices;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using ClrDebug;
 
 namespace ChaosLib.TypedData
@@ -34,6 +36,27 @@ namespace ChaosLib.TypedData
 
         public TypedDataProvider(DbgHelpSession dbgHelpSession)
         {
+            if (dbgHelpSession == null)
+                throw new ArgumentNullException(nameof(dbgHelpSession));
+
+            //If DbgHelp was loaded from system32, this very strongly indicates a bug and that we won't
+            //be able to load any symbols, so detect this and throw an error.
+
+            var dbgHelpModule = Process.GetCurrentProcess().Modules
+                .Cast<ProcessModule>()
+                .FirstOrDefault(m => StringComparer.OrdinalIgnoreCase.Equals(m.ModuleName, "dbghelp.dll"));
+
+            if (dbgHelpModule != null)
+            {
+                var dir = Path.GetDirectoryName(dbgHelpModule.FileName);
+
+                var system32 = Path.Combine(Environment.GetEnvironmentVariable("WINDIR"), "system32");
+
+                //There won't be a trailing slash on dir
+                if (StringComparer.OrdinalIgnoreCase.Equals(dir, system32))
+                    throw new InvalidOperationException($"DbgHelp.dll has been loaded from system32; symsrv will be unavailable. Consider calling SetDllDirectory prior to creating your {nameof(DbgHelpSession)}, or explicitly load DbgHelp.dll first from a location containing symsrv.dll");
+            }
+
             this.dbgHelpSession = dbgHelpSession;
             reader = new MemoryReader(dbgHelpSession.hProcess);
         }
@@ -57,13 +80,8 @@ namespace ChaosLib.TypedData
         public byte[] ReadVirtual(long address, int size) =>
             reader.ReadVirtual(address, size);
 
-        public long ReadPointer(long address)
-        {
-            if (IntPtr.Size == 4)
-                return reader.ReadVirtual<int>(address);
-            else
-                return reader.ReadVirtual<long>(address);
-        }
+        public long ReadPointer(long address) =>
+            reader.ReadPointer(address);
 
         public HRESULT TryReadVirtual(long address, int size, out byte[] value) =>
             reader.TryReadVirtual(address, size, out value);

@@ -188,6 +188,10 @@ namespace ChaosLib
                 [In] IntPtr UserContext,
                 [In] SYMSEARCH Options);
 
+            [DllImport(dbghelp)]
+            internal static extern SYMOPT SymSetOptions(
+                [In] SYMOPT SymOptions);
+
             [DllImport(dbghelp, SetLastError = true)]
             internal static extern bool SymUnloadModule64(
                 [In] IntPtr hProcess,

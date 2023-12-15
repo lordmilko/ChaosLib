@@ -24,7 +24,7 @@ namespace ChaosLib
             );
 
             if (status != NTSTATUS.STATUS_SUCCESS)
-                throw new InvalidOperationException($"Query failed with status {status}");
+                throw new InvalidOperationException($"{nameof(NtQueryInformationProcess)} failed with status {status}");
 
             return Marshal.PtrToStructure<T>(buffer);
         }
@@ -45,9 +45,38 @@ namespace ChaosLib
             );
 
             if (status != NTSTATUS.STATUS_SUCCESS)
-                throw new InvalidOperationException($"Query failed with status {status}");
+                throw new InvalidOperationException($"{nameof(NtQueryInformationThread)} failed with status {status}");
 
             return Marshal.PtrToStructure<T>(buffer);
+        }
+
+        public static unsafe RTL_DEBUG_INFORMATION* RtlCreateQueryDebugBuffer(int MaximumCommit = 0, bool UseEventPair = false)
+        {
+            var result = Native.RtlCreateQueryDebugBuffer(MaximumCommit, UseEventPair);
+
+            if ((IntPtr) result == IntPtr.Zero)
+                throw new InvalidOperationException($"{nameof(RtlCreateQueryDebugBuffer)} failed.");
+
+            return result;
+        }
+
+        public static unsafe void RtlDestroyQueryDebugBuffer(RTL_DEBUG_INFORMATION* Buffer)
+        {
+            var status = Native.RtlDestroyQueryDebugBuffer(Buffer);
+
+            if (status != NTSTATUS.STATUS_SUCCESS)
+                throw new InvalidOperationException($"{nameof(RtlDestroyQueryDebugBuffer)} failed with status {status}");
+        }
+
+        public static unsafe void RtlQueryProcessDebugInformation(
+            int UniqueProcessId,
+            RTL_QUERY_PROCESS Flags,
+            RTL_DEBUG_INFORMATION* Buffer)
+        {
+            var status = Native.RtlQueryProcessDebugInformation((IntPtr) UniqueProcessId, Flags, Buffer);
+
+            if (status != NTSTATUS.STATUS_SUCCESS)
+                throw new InvalidOperationException($"{nameof(RtlQueryProcessDebugInformation)} failed with status {status}");
         }
     }
 }

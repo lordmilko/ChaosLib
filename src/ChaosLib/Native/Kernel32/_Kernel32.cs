@@ -14,6 +14,8 @@ namespace ChaosLib
     {
         public const int INFINITE = -1;
         public const int S_FALSE = 1;
+        public const int MAX_PATH = 260;
+        public static readonly IntPtr INVALID_HANDLE_VALUE = new IntPtr(-1);
 
         #region Relay
 
@@ -21,14 +23,30 @@ namespace ChaosLib
 
         public static void FreeLibrary(IntPtr hLibModule) => Native.FreeLibrary(hLibModule);
 
+        public static int GetCurrentThreadId() => Native.GetCurrentThreadId();
+
         public static void SetConsoleCtrlHandler(ConsoleCtrlHandlerRoutine HandlerRoutine, bool Add) =>
             Native.SetConsoleCtrlHandler(HandlerRoutine, Add);
 
-        public static void SetDllDirectory(string lpPathName) => Native.SetDllDirectory(lpPathName);
-
         public static void VirtualFreeEx(IntPtr hProcess, IntPtr lpAddress) => Native.VirtualFreeEx(hProcess, lpAddress, 0, AllocationType.Release);
 
+        public static WAIT WaitForSingleObject(IntPtr hHandle, int dwMilliseconds) =>
+            Native.WaitForSingleObject(hHandle, dwMilliseconds);
+
         public static void ZeroMemory(IntPtr dest, int size) => Native.ZeroMemory(dest, size);
+
+        #endregion
+        #region AddDllDirectory
+
+        public static IntPtr AddDllDirectory(string NewDirectory)
+        {
+            var result = Native.AddDllDirectory(NewDirectory);
+
+            if (result == IntPtr.Zero)
+                ((HRESULT) Marshal.GetHRForLastWin32Error()).ThrowOnNotOK();
+
+            return result;
+        }
 
         #endregion
         #region CreateProcessA
@@ -147,9 +165,76 @@ namespace ChaosLib
         }
 
         #endregion
+        #region CreateToolhelp32Snapshot
 
-        public static int GetCurrentThreadId() => Native.GetCurrentThreadId();
+        public static IntPtr CreateToolhelp32Snapshot(TH32CS dwFlags, int th32ProcessID)
+        {
+            TryCreateToolhelp32Snapshot(dwFlags, th32ProcessID, out var hSnapshot).ThrowOnNotOK();
+            return hSnapshot;
+        }
 
+        public static HRESULT TryCreateToolhelp32Snapshot(TH32CS dwFlags, int th32ProcessID, out IntPtr hSnapshot)
+        {
+            hSnapshot = Native.CreateToolhelp32Snapshot(dwFlags, th32ProcessID);
+
+            if (hSnapshot == INVALID_HANDLE_VALUE)
+                return (HRESULT) Marshal.GetHRForLastWin32Error();
+
+            return S_OK;
+        }
+
+        #endregion
+        #region EnumProcessModulesEx
+
+        public static IntPtr[] EnumProcessModulesEx(IntPtr hProcess, LIST_MODULES dwFilterFlag)
+        {
+            TryEnumProcessModulesEx(hProcess, dwFilterFlag, out var modules).ThrowOnNotOK();
+            return modules;
+        }
+
+        public static HRESULT TryEnumProcessModulesEx(IntPtr hProcess, LIST_MODULES dwFilterFlag, out IntPtr[] modules)
+        {
+            var result = Native.EnumProcessModulesEx(hProcess, IntPtr.Zero, 0, out var lpcbNeeded, dwFilterFlag);
+
+            if (result)
+            {
+                using var buffer = new MemoryBuffer(lpcbNeeded);
+
+                result = Native.EnumProcessModulesEx(hProcess, buffer, lpcbNeeded, out lpcbNeeded, dwFilterFlag);
+
+                if (result)
+                {
+                    var length = lpcbNeeded / IntPtr.Size;
+                    var results = new IntPtr[length];
+
+                    for (var i = 0; i < length; i++)
+                        results[i] = Marshal.PtrToStructure<IntPtr>((IntPtr) buffer + i * IntPtr.Size);
+
+                    modules = results;
+                    return S_OK;
+                }
+            }
+
+            modules = null;
+            return (HRESULT) Marshal.GetHRForLastWin32Error();
+        }
+
+        #endregion
+        #region GetModuleFileNameExW
+
+        public static string GetModuleFileNameExW(IntPtr hProcess, IntPtr hModule)
+        {
+            var buffer = new char[MAX_PATH];
+
+            var result = Native.GetModuleFileNameExW(hProcess, hModule, buffer, MAX_PATH);
+
+            if (result == 0)
+                ((HRESULT) Marshal.GetHRForLastWin32Error()).ThrowOnNotOK();
+
+            return new string(buffer, 0, result);
+        }
+
+        #endregion
         #region GetModuleHandleW
 
         public static IntPtr GetModuleHandleW(string lpModuleName)
@@ -383,6 +468,17 @@ namespace ChaosLib
         }
 
         #endregion
+        #region RemoveDllDirectory
+
+        public static void RemoveDllDirectory(IntPtr Cookie)
+        {
+            var result = Native.RemoveDllDirectory(Cookie);
+
+            if (!result)
+                ((HRESULT)Marshal.GetHRForLastWin32Error()).ThrowOnNotOK();
+        }
+
+        #endregion
         #region ResumeThread
 
         public static void ResumeThread(IntPtr hThread)
@@ -391,6 +487,17 @@ namespace ChaosLib
 
             if (result == -1)
                 throw new DebugException((HRESULT) Marshal.GetHRForLastWin32Error());
+        }
+
+        #endregion
+        #region SetDllDirectory
+
+        public static void SetDllDirectory(string lpPathName)
+        {
+            var result = Native.SetDllDirectory(lpPathName);
+
+            if (!result)
+                ((HRESULT)Marshal.GetHRForLastWin32Error()).ThrowOnNotOK();
         }
 
         #endregion
@@ -428,12 +535,6 @@ namespace ChaosLib
 
             return result;
         }
-
-        #endregion
-        #region WaitForSingleObject
-
-        public static WAIT WaitForSingleObject(IntPtr hHandle, int dwMilliseconds) =>
-            Native.WaitForSingleObject(hHandle, dwMilliseconds);
 
         #endregion
         #region WriteProcessMemory

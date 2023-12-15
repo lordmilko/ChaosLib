@@ -11,7 +11,7 @@ namespace ChaosLib
 
         public int PointerSize { get; }
 
-        private IntPtr hProcess;
+        public IntPtr hProcess { get; }
 
         public MemoryReader(IntPtr hProcess)
         {
