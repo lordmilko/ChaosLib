@@ -39,7 +39,7 @@ namespace ChaosLib.Metadata
         /// Gets the information about the export table in the image, and where the components of it can be found.<para/>
         /// This value is pointed to by <see cref="ImageOptionalHeader.ExportTableDirectory"/>.
         /// </summary>
-        IImageExportDirectory ExportDirectory { get; }
+        IImageExportDirectoryInfo ExportDirectory { get; }
 
         IImageImportDescriptorInfo[] ImportDirectory { get; }
 
@@ -102,7 +102,7 @@ namespace ChaosLib.Metadata
         //Items pointed to by directory entries in ImageOptionalHeader
 
         /// <inheritdoc />
-        public IImageExportDirectory ExportDirectory { get; }
+        public IImageExportDirectoryInfo ExportDirectory { get; }
 
         public IImageImportDescriptorInfo[] ImportDirectory { get; }
 
@@ -177,7 +177,7 @@ namespace ChaosLib.Metadata
             return null;
         }
 
-        private ImageExportDirectory ReadExportDirectory(PEBinaryReader reader)
+        private IImageExportDirectoryInfo ReadExportDirectory(PEBinaryReader reader)
         {
             int offset;
 
@@ -185,7 +185,9 @@ namespace ChaosLib.Metadata
                 return null;
 
             reader.Seek(offset);
-            return new ImageExportDirectory(this, reader);
+            var exportDirectory = new ImageExportDirectory(reader);
+
+            return new ImageExportDirectoryInfo(exportDirectory, this, reader);
         }
 
         private IImageImportDescriptorInfo[] ReadImportDirectory(PEBinaryReader reader)

@@ -7,7 +7,6 @@ namespace ChaosLib.Metadata
         string Name { get; }
     }
 
-    //IMAGE_IMPORT_DESCRIPTOR
     public class ImageImportDescriptorInfo : IImageImportDescriptorInfo
     {
         public string Name { get; }

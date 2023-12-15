@@ -9,6 +9,7 @@
         int FirstThunk { get; }
     }
 
+    //IMAGE_IMPORT_DESCRIPTOR
     public class ImageImportDescriptor : IImageImportDescriptor
     {
         public int OriginalFirstThunk { get; }

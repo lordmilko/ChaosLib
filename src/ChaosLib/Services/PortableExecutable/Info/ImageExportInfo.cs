@@ -28,6 +28,11 @@ namespace ChaosLib.Metadata
             TargetFunction = targetFunction;
             Ordinal = ordinal;
         }
+
+        public override string ToString()
+        {
+            return $"{Name} -> {TargetFunction}";
+        }
     }
 
     public class ImageExportInfo : IImageExportInfo
@@ -46,6 +51,14 @@ namespace ChaosLib.Metadata
             Index = index;
             FunctionAddress = functionAddress;
             Ordinal = ordinal;
+        }
+
+        public override string ToString()
+        {
+            if (!string.IsNullOrEmpty(Name))
+                return Name;
+
+            return Ordinal.ToString();
         }
     }
 }

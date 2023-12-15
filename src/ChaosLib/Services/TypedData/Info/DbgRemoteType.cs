@@ -109,7 +109,7 @@ namespace ChaosLib.TypedData
 
             DbgRemoteType baseType = null;
 
-            //We seem to be hitting this in ChaosDbg's Peb_x86/64 tests. There may not actually be an issue
+            //We seem to be hitting this in ChaosDbg's Peb_Modules_x86/64 tests. There may not actually be an issue
             //if (typeInfo.TryGetPropertyValue<bool>(IMAGEHLP_SYMBOL_TYPE_INFO.TI_GET_NESTED, out var nested) == HRESULT.S_OK && nested)
             //    throw new NotImplementedException("The offset of nested structs has not been testeed. Need to compare against the DbgEngTypedData sample to see if TI_GET_OFFSET we use here takes into consideration the true position within the nested struct.");
 
