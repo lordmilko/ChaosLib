@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Runtime.InteropServices;
 using ChaosLib.Memory;
 using ClrDebug;
@@ -15,6 +17,7 @@ namespace ChaosLib
         public const int INFINITE = -1;
         public const int S_FALSE = 1;
         public const int MAX_PATH = 260;
+        public const int PAGE_SIZE = 0x1000;
         public static readonly IntPtr INVALID_HANDLE_VALUE = new IntPtr(-1);
 
         #region Relay
@@ -46,6 +49,36 @@ namespace ChaosLib
                 ((HRESULT) Marshal.GetHRForLastWin32Error()).ThrowOnNotOK();
 
             return result;
+        }
+
+        #endregion
+        #region CreateFileW
+
+        public static HRESULT TryCreateFileW(
+            string lpFileName,
+            FileAccess dwDesiredAccess,
+            FILE_SHARE dwShareMode,
+            FileMode dwCreationDisposition,
+            out IntPtr hFile)
+        {
+            var result = Native.CreateFileW(
+                lpFileName,
+                (int) dwDesiredAccess,
+                dwShareMode,
+                IntPtr.Zero,
+                dwCreationDisposition,
+                0x80 //FILE_ATTRIBUTE_NORMAL
+            );
+
+            if (result == INVALID_HANDLE_VALUE)
+            {
+                hFile = default;
+                return (HRESULT)Marshal.GetHRForLastWin32Error();
+            }
+
+            hFile = result;
+
+            return S_OK;
         }
 
         #endregion
@@ -184,6 +217,17 @@ namespace ChaosLib
         }
 
         #endregion
+        #region DebugActiveProcessStop
+
+        public static void DebugActiveProcessStop(int dwProcessId)
+        {
+            var result = Native.DebugActiveProcessStop(dwProcessId);
+
+            if (!result)
+                ((HRESULT) Marshal.GetHRForLastWin32Error()).ThrowOnNotOK();
+        }
+
+        #endregion
         #region EnumProcessModulesEx
 
         public static IntPtr[] EnumProcessModulesEx(IntPtr hProcess, LIST_MODULES dwFilterFlag)
@@ -217,6 +261,74 @@ namespace ChaosLib
 
             modules = null;
             return (HRESULT) Marshal.GetHRForLastWin32Error();
+        }
+
+        #endregion
+        #region FindVolumes
+
+        public static IEnumerable<string> FindVolumes()
+        {
+            TryFindFirstVolumeW(out var name, out var hFindVolume).ThrowOnNotOK();
+
+            yield return name;
+
+            try
+            {
+                while (TryFindNextVolumeW(hFindVolume, out name) != ERROR_NO_MORE_FILES)
+                {
+                    yield return name;
+                }
+            }
+            finally
+            {
+                TryFindVolumeClose(hFindVolume).ThrowOnNotOK();
+            }
+        }
+
+        public static HRESULT TryFindFirstVolumeW(out string lpszVolumeName, out IntPtr hFindVolume)
+        {
+            var size = MAX_PATH * 2; //WCHAR
+            using var buffer = new MemoryBuffer(size);
+            var result = FindFirstVolumeW(buffer, size);
+
+            if (result == INVALID_HANDLE_VALUE)
+            {
+                lpszVolumeName = default;
+                hFindVolume = default;
+
+                return (HRESULT) Marshal.GetHRForLastWin32Error();
+            }
+
+            lpszVolumeName = Marshal.PtrToStringUni(buffer);
+            hFindVolume = result;
+            return S_OK;
+        }
+
+        public static HRESULT TryFindNextVolumeW(IntPtr hFindVolume, out string lpszVolumeName)
+        {
+            var size = MAX_PATH * 2; //WCHAR
+            using var buffer = new MemoryBuffer(size);
+
+            var result = FindNextVolumeW(hFindVolume, buffer, size);
+
+            if (!result)
+            {
+                lpszVolumeName = null;
+                return (HRESULT) Marshal.GetHRForLastWin32Error();
+            }
+
+            lpszVolumeName = Marshal.PtrToStringUni(buffer);
+            return S_OK;
+        }
+
+        public static HRESULT TryFindVolumeClose(IntPtr hFindVolume)
+        {
+            var result = Native.FindVolumeClose(hFindVolume);
+
+            if (!result)
+                return (HRESULT)Marshal.GetHRForLastWin32Error();
+
+            return S_OK;
         }
 
         #endregion
@@ -323,6 +435,79 @@ namespace ChaosLib
         }
 
         #endregion
+        #region GetThreadDescription
+
+        public static string GetThreadDescription(IntPtr hThread)
+        {
+            var hr = Native.GetThreadDescription(hThread, out var ppszThreadDescription);
+
+            if (hr == STATUS_SUCCESS)
+            {
+                try
+                {
+                    var str = Marshal.PtrToStringUni(ppszThreadDescription);
+
+                    if (str == string.Empty)
+                        return null;
+
+                    return str;
+                }
+                finally
+                {
+                    LocalFree(ppszThreadDescription);
+                }
+            }
+
+            throw new DebugException(hr);
+        }
+
+        #endregion
+        #region GetVolumePathNamesForVolumeNameW
+
+        public static string[] GetVolumePathNamesForVolumeNameW(string lpszVolumeName)
+        {
+            var size = MAX_PATH;
+            var buffer = new char[size];
+
+            var result = Native.GetVolumePathNamesForVolumeNameW(lpszVolumeName, buffer, size, out size);
+
+            if (!result)
+            {
+                var hr = (HRESULT) Marshal.GetHRForLastWin32Error();
+
+                if (hr != ERROR_MORE_DATA)
+                    hr.ThrowOnNotOK();
+
+                buffer = new char[size];
+
+                result = Native.GetVolumePathNamesForVolumeNameW(lpszVolumeName, buffer, size, out size);
+
+                if (!result)
+                    ((HRESULT)Marshal.GetHRForLastWin32Error()).ThrowOnNotOK();
+            }
+
+            int start = 0;
+
+            var results = new List<string>();
+
+            for (var i = 0; i < size; i++)
+            {
+                if (buffer[i] == '\0')
+                {
+                    var length = i - start;
+
+                    if (length == 0)
+                        break;
+
+                    results.Add(new string(buffer, start, length));
+                    start = i + 1;
+                }
+            }
+
+            return results.ToArray();
+        }
+
+        #endregion
         #region HeapFree
 
         public static void HeapFree(IntPtr hHeap, int dwFlags, IntPtr lpMem) =>
@@ -404,6 +589,68 @@ namespace ChaosLib
             hThread = Native.OpenThread(dwDesiredAccess, bInheritHandle, dwThreadId);
 
             return hThread == IntPtr.Zero ? (HRESULT) Marshal.GetHRForLastWin32Error() : S_OK;
+        }
+
+        #endregion
+        #region QueryDosDeviceW
+
+        public static string[] QueryDosDeviceW(string lpDeviceName = null)
+        {
+            if (lpDeviceName != null)
+            {
+                if (lpDeviceName.StartsWith("\\\\?\\"))
+                    lpDeviceName = lpDeviceName.Substring(4);
+
+                lpDeviceName = lpDeviceName.TrimEnd('\\');
+            }
+
+            //Note that if no device name is specified, this will list EVERY SINGLE device - not just hard disk drives!
+
+            var size = MAX_PATH;
+            var buffer = new char[size];
+
+            while (true)
+            {
+                //The device name cannot have a trailing slash
+                var result = Native.QueryDosDeviceW(lpDeviceName, buffer, size);
+
+                if (result == 0)
+                {
+                    var hr = (HRESULT) Marshal.GetHRForLastWin32Error();
+
+                    if (hr == ERROR_INSUFFICIENT_BUFFER)
+                    {
+                        size *= 2;
+                        buffer = new char[size];
+                    }
+                    else
+                        hr.ThrowOnNotOK();
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            int start = 0;
+
+            var results = new List<string>();
+
+            for (var i = 0; i < size; i++)
+            {
+                if (buffer[i] == '\0')
+                {
+                    var length = i - start;
+
+                    if (length == 0)
+                        break;
+
+                    results.Add(new string(buffer, start, length));
+                    start = i + 1;
+                }
+            }
+
+            return results.ToArray();
         }
 
         #endregion

@@ -1,4 +1,6 @@
-﻿namespace ChaosLib
+﻿using System;
+
+namespace ChaosLib
 {
     public enum SYSTEM_INFORMATION_CLASS
     {
@@ -18,6 +20,8 @@
         SystemStackTraceInformation,
         SystemPagedPoolInformation,
         SystemNonPagedPoolInformation,
+
+        [Obsolete("SystemExtendedHandleInformation instead. SYSTEM_HANDLE_INFORMATION can only store PIDs up to 65536")]
         SystemHandleInformation,
         SystemObjectInformation,
         SystemPageFileInformation,

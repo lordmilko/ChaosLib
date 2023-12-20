@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Runtime.InteropServices;
 using ClrDebug;
 
@@ -18,6 +19,16 @@ namespace ChaosLib
 
             [DllImport(kernel32, SetLastError = true)]
             public static extern bool CloseHandle(IntPtr handle);
+
+            [DllImport(kernel32, SetLastError = true)]
+            public static extern IntPtr CreateFileW(
+                [In, MarshalAs(UnmanagedType.LPWStr)] string lpFileName,
+                [In] int dwDesiredAccess,
+                [In] FILE_SHARE dwShareMode,
+                [In, Optional] IntPtr lpSecurityAttributes,
+                [In] FileMode dwCreationDisposition,
+                [In] int dwFlagsAndAttributes,
+                [In, Optional] IntPtr hTemplateFile);
 
             [DllImport(kernel32, SetLastError = true, CharSet = CharSet.Ansi)]
             public static extern bool CreateProcessA(
@@ -60,6 +71,10 @@ namespace ChaosLib
                 [In] TH32CS dwFlags,
                 [In] int th32ProcessID);
 
+            [DllImport(kernel32, SetLastError = true)]
+            public static extern bool DebugActiveProcessStop(
+                [In] int dwProcessId);
+
             //In PSAPI_VERSION 2 this function is exported from Kernel32 with a different name
             [DllImport(kernel32, EntryPoint = "K32EnumProcessModulesEx", SetLastError = true)]
             public static extern bool EnumProcessModulesEx(
@@ -68,6 +83,21 @@ namespace ChaosLib
                 [In] int cb,
                 [Out] out int lpcbNeeded,
                 [In] LIST_MODULES dwFilterFlag);
+
+            [DllImport(kernel32, SetLastError = true)]
+            public static extern IntPtr FindFirstVolumeW(
+                [Out] IntPtr lpszVolumeName,
+                [In] int cchBufferlength);
+
+            [DllImport(kernel32, SetLastError = true)]
+            public static extern bool FindNextVolumeW(
+                [In] IntPtr hFindVolume,
+                [Out] IntPtr lpszVolumeName,
+                [In] int cchBufferLength);
+
+            [DllImport(kernel32, SetLastError = true)]
+            public static extern bool FindVolumeClose(
+                [In] IntPtr hFindVolume);
 
             [DllImport(kernel32, SetLastError = true)]
             public static extern bool FreeLibrary(IntPtr hLibModule);
@@ -82,7 +112,7 @@ namespace ChaosLib
             public static extern int GetModuleFileNameExW(
                 [In] IntPtr hProcess,
                 [In, Optional] IntPtr hModule,
-                [Out, MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U2)] char[] lpFileName,
+                [Out, MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U2, SizeParamIndex = 3)] char[] lpFileName,
                 [In] int nSize);
 
             [DllImport(kernel32, SetLastError = true)]
@@ -98,8 +128,20 @@ namespace ChaosLib
             [DllImport(kernel32, SetLastError = true)]
             public static extern int GetProcessId([In] IntPtr Process);
 
+            [DllImport(kernel32)]
+            public static extern HRESULT GetThreadDescription(
+                [In] IntPtr hThread,
+                [Out] out IntPtr ppszThreadDescription);
+
             [DllImport(kernel32, SetLastError = true)]
             public static extern bool GetThreadContext(IntPtr hThread, IntPtr lpContext);
+
+            [DllImport(kernel32, SetLastError = true)]
+            public static extern bool GetVolumePathNamesForVolumeNameW(
+                [In, MarshalAs(UnmanagedType.LPWStr)] string lpszVolumeName,
+                [Out, MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U2, SizeParamIndex = 2)] char[] lpszVolumePathNames,
+                [In] int cchBufferLength,
+                [Out] out int lpcchReturnLength);
 
             [DllImport(kernel32, SetLastError = true)]
             public static extern bool HeapFree(
@@ -137,6 +179,12 @@ namespace ChaosLib
 
             [DllImport(kernel32, SetLastError = true)]
             public static extern IntPtr OpenThread(ThreadAccess dwDesiredAccess, bool bInheritHandle, int dwThreadId);
+
+            [DllImport(kernel32, SetLastError = true)]
+            public static extern int QueryDosDeviceW(
+                [In, Optional, MarshalAs(UnmanagedType.LPWStr)] string lpDeviceName,
+                [Out, MarshalAs(UnmanagedType.LPArray, ArraySubType = UnmanagedType.U2, SizeParamIndex = 2)] char[] lpTargetPath,
+                [In] int ucchMax);
 
             [DllImport(kernel32, SetLastError = true)]
             public static extern bool ReadProcessMemory(

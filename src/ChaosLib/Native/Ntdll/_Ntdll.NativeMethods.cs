@@ -43,6 +43,14 @@ namespace ChaosLib
                 [Out] out int ReturnLength);
 
             [DllImport(ntdll)]
+            public static extern NTSTATUS NtQueryObject(
+                [In, Optional] IntPtr Handle,
+                [In] OBJECT_INFORMATION_CLASS ObjectInformationClass,
+                [Out] IntPtr ObjectInformation,
+                [In] int ObjectInformationLength,
+                [Out] out int ReturnLength);
+
+            [DllImport(ntdll)]
             public static extern NTSTATUS NtQuerySystemInformation(
                 [In] SYSTEM_INFORMATION_CLASS SystemInformationClass,
                 [Out] IntPtr SystemInformation,

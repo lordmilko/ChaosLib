@@ -3,6 +3,8 @@ using System.Threading;
 
 namespace ChaosLib
 {
+    //Represents an event that wakes up when there's work to do
+
     class CountEvent
     {
         private ManualResetEventSlim manualEvent = new ManualResetEventSlim(false);

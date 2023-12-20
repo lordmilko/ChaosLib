@@ -50,6 +50,51 @@ namespace ChaosLib
             return Marshal.PtrToStructure<T>(buffer);
         }
 
+        public static T NtQueryObject<T>(
+            IntPtr Handle,
+            OBJECT_INFORMATION_CLASS ObjectInformationClass)
+        {
+            var size = Marshal.SizeOf<T>();
+            using var buffer = new MemoryBuffer(size);
+
+            var status = Native.NtQueryObject(
+                Handle,
+                ObjectInformationClass,
+                buffer,
+                size,
+                out _
+            );
+
+            if (status != NTSTATUS.STATUS_SUCCESS)
+                throw new InvalidOperationException($"{nameof(NtQueryObject)} failed with status {status}");
+
+            return Marshal.PtrToStructure<T>(buffer);
+        }
+
+        public static T NtQuerySystemInformation<T>(
+            SYSTEM_INFORMATION_CLASS SystemInformationClass)
+        {
+            var size = Marshal.SizeOf<T>();
+            var buffer = new MemoryBuffer(size);
+
+            var status = Native.NtQuerySystemInformation(
+                SystemInformationClass,
+                buffer,
+                size,
+                out _
+            );
+
+            if (status != NTSTATUS.STATUS_SUCCESS)
+            {
+                if (status == NTSTATUS.STATUS_INFO_LENGTH_MISMATCH)
+                    throw new InvalidOperationException($"Variable length data structures should be manually handled, rather than using this helper method. {nameof(NtQuerySystemInformation)} returned status: {status}");
+
+                throw new InvalidOperationException($"{nameof(NtQuerySystemInformation)} failed with status {status}");
+            }
+
+            return Marshal.PtrToStructure<T>(buffer);
+        }
+
         public static unsafe RTL_DEBUG_INFORMATION* RtlCreateQueryDebugBuffer(int MaximumCommit = 0, bool UseEventPair = false)
         {
             var result = Native.RtlCreateQueryDebugBuffer(MaximumCommit, UseEventPair);
