@@ -33,9 +33,16 @@ namespace ChaosLib
         /// </summary>
         /// <param name="target">The child process to attach to.</param>
         /// <param name="type">The type of Visual Studio debugging engine to use to perform the attach.</param>
-        public static void Attach(Process target, VsDebuggerType type)
+        public static void Attach(Process target, VsDebuggerType type) =>
+            Invoke(target, p => p.Attach2(type.GetDescription()));
+
+        //Note: you cant detach if interop debugging
+        public static void Detach(Process target) =>
+            Invoke(target, p => p.Detach(false));
+
+        private static void Invoke(Process target, Action<EnvDTE80.Process2> action)
         {
-            while(true)
+            while (true)
             {
                 try
                 {
@@ -51,7 +58,7 @@ namespace ChaosLib
                                 {
                                     try
                                     {
-                                        process.Attach2(type.GetDescription());
+                                        action(process);
                                     }
                                     catch (Exception ex)
                                     {
@@ -68,7 +75,7 @@ namespace ChaosLib
                 }
                 catch (COMException ex)
                 {
-                    if (((HRESULT) ex.HResult) != HRESULT.RPC_E_SERVERCALL_RETRYLATER)
+                    if (((HRESULT)ex.HResult) != HRESULT.RPC_E_SERVERCALL_RETRYLATER)
                         throw;
                 }
             }

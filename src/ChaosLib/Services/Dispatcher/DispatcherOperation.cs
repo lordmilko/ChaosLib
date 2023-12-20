@@ -13,6 +13,8 @@ namespace ChaosLib
 
         public Task Task => GetTask();
 
+        public WaitHandle WaitHandle => ((IAsyncResult) Task).AsyncWaitHandle;
+
         public string Name => method.Method.DeclaringType + "." + method.Method.Name;
 
         private object result;

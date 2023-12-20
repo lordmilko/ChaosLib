@@ -34,7 +34,7 @@ namespace ChaosLib
             //when attempting to read across a page boundary. As such, memory requests must be "chunked" to be within each page,
             //which we do by gradually shifting the pointer of our buffer along until we've read everything we're after
 
-            var pageSize = 0x1000;
+            var pageSize = Kernel32.PAGE_SIZE;
 
             var totalRead = 0;
 
