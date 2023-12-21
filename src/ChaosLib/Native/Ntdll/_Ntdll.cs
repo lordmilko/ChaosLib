@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using ClrDebug;
 
@@ -7,6 +8,93 @@ namespace ChaosLib
     public static partial class Ntdll
     {
         public const string OUT_OF_PROCESS_FUNCTION_TABLE_CALLBACK_EXPORT_NAME = "OutOfProcessFunctionTableCallback";
+
+        #region NtOpenDirectoryObject
+
+        public static IEnumerable<string> EnumerateDirectories(string objectName)
+        {
+            if (TryNtOpenDirectoryObject(ACCESS_MASK.DIRECTORY_QUERY, objectName, OBJ.CASE_INSENSITIVE, out var handle) != NTSTATUS.STATUS_SUCCESS)
+                yield break;
+
+            //Setup a buffer to store search results in. NtQueryDirectoryObject will store as many items as it can
+            //in the buffer, and then set "context" to the number of items that were written. This is kind of an
+            //implementation detail however; the user contract is that the last entry written will be "null"
+
+            var size = 2048;
+            using var buffer = new MemoryBuffer(size);
+
+            int context = 0;
+
+            var infoSize = Marshal.SizeOf<OBJECT_DIRECTORY_INFORMATION>();
+
+            unsafe IntPtr GetNameBuffer(IntPtr p) => (IntPtr) (((OBJECT_DIRECTORY_INFORMATION*) p)->Name.Buffer);
+
+            while (true)
+            {
+                var status = Ntdll.Native.NtQueryDirectoryObject(handle, buffer, size, false, false, ref context, out _);
+
+                if (status == NTSTATUS.STATUS_NO_MORE_ENTRIES)
+                    yield break;
+
+                if (status != NTSTATUS.STATUS_SUCCESS && status != NTSTATUS.STATUS_MORE_ENTRIES)
+                    status.ThrowOnNotOK();
+
+                IntPtr pInfo = buffer;
+
+                while (true)
+                {
+                    var pName = GetNameBuffer(pInfo);
+
+                    if (pName == IntPtr.Zero)
+                        break;
+
+                    var name = Marshal.PtrToStringUni(pName);
+
+                    yield return name;
+
+                    pInfo += infoSize;
+                }
+            }
+        }
+
+        public static unsafe IntPtr NtOpenDirectoryObject(ACCESS_MASK DesiredAccess, string objectName, OBJ attributes)
+        {
+            TryNtOpenDirectoryObject(DesiredAccess, objectName, attributes, out var DirectoryHandle).ThrowOnNotOK();
+
+            return DirectoryHandle;
+        }
+
+        public static unsafe NTSTATUS TryNtOpenDirectoryObject(
+            ACCESS_MASK DesiredAccess,
+            string objectName,
+            OBJ attributes,
+            out IntPtr DirectoryHandle)
+        {
+            using var nameBuffer = new MemoryBuffer(Marshal.StringToHGlobalUni(objectName));
+            var length = (short)(objectName.Length * 2);
+
+            var unicodeString = new UNICODE_STRING
+            {
+                Length = length,
+                MaximumLength = length,
+                Buffer = (ushort*)(IntPtr)nameBuffer
+            };
+
+            using var unicodeStringBuffer = new MemoryBuffer<UNICODE_STRING>(unicodeString);
+
+            var objectAttributes = new OBJECT_ATTRIBUTES
+            {
+                Length = Marshal.SizeOf<OBJECT_ATTRIBUTES>(),
+                ObjectName = (UNICODE_STRING*)(IntPtr)unicodeStringBuffer,
+                Attributes = attributes
+            };
+
+            var status = Native.NtOpenDirectoryObject(out DirectoryHandle, DesiredAccess, ref objectAttributes);
+
+            return status;
+        }
+
+        #endregion
 
         public static T NtQueryInformationProcess<T>(
             IntPtr ProcessHandle,

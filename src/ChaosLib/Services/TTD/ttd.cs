@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -132,11 +133,28 @@ namespace ChaosLib
         //WinDbg's TtdRecordSessionInfo will execute a stop process upon cancellation, and then will
         //go through and delete any files that were created if the operation wasn't flagged as success
 
-        public static TtdTraceSession Launch(
+        /// <summary>
+        /// Launches the specified process and waits for it to exit.
+        /// </summary>
+        /// <param name="processName">The name of the process to launch.</param>
+        /// <param name="arguments">Any arguments that should be passed to the process.</param>
+        /// <param name="outOfProcess">Whether to launch ttd.exe directly out of process.</param>
+        /// <param name="launchAndAttach">Whether to create the process first and then attach.
+        /// This provides a more reliable means of determining the process ID.</param>
+        /// <param name="callback">The callback to execute for any log messages that are received from TTD.</param>
+        public static void Launch(
             string processName,
             string arguments = null,
             bool outOfProcess = false,
-            bool launchAndAttach = true,
+            bool launchAndAttach = false,
+            Action<TtdDiagnosticMessage> callback = null) =>
+            LaunchAsync(processName, arguments, outOfProcess, launchAndAttach, callback);
+
+        public static TtdTraceSession LaunchAsync(
+            string processName,
+            string arguments = null,
+            bool outOfProcess = false,
+            bool launchAndAttach = false,
             Action<TtdDiagnosticMessage> callback = null)
         {
             if (processName == null)
@@ -153,12 +171,12 @@ namespace ChaosLib
             //Note however that ntobjectsession: points to ntobject:\sessions\1 but there's a 0 session folder as well
 
             if (launchAndAttach)
-                return LaunchAndAttach(processName, arguments, outOfProcess, callback);
+                return LaunchAndAttachAsync(processName, arguments, outOfProcess, callback);
             else
-                return LaunchNormal(processName, arguments, outOfProcess, callback);
+                return LaunchNormalAsync(processName, arguments, outOfProcess, callback);
         }
 
-        private static TtdTraceSession LaunchAndAttach(
+        private static TtdTraceSession LaunchAndAttachAsync(
             string processName,
             string arguments,
             bool outOfProcess,
@@ -183,7 +201,7 @@ namespace ChaosLib
             try
             {
                 //Note: Attach also sets CurrentSession
-                session = Attach(pi.dwProcessId, outOfProcess, callback);
+                session = AttachAsync(pi.dwProcessId, outOfProcess, callback);
 
                 Kernel32.ResumeThread(pi.hThread);
             }
@@ -196,7 +214,7 @@ namespace ChaosLib
             return session;
         }
 
-        private static TtdTraceSession LaunchNormal(
+        private static TtdTraceSession LaunchNormalAsync(
             string processName,
             string arguments,
             bool outOfProcess,
@@ -217,6 +235,8 @@ namespace ChaosLib
 
             DispatcherOperation op;
 
+            var preIds = GetActiveTraceProcessIds();
+
             if (outOfProcess)
                 op = TtdOutOfProcExecutor.Execute(opts, install, callback);
             else
@@ -224,15 +244,42 @@ namespace ChaosLib
 
             WaitHandle.WaitAny(new[] { op.WaitHandle, wait });
 
-            CurrentSession = new TtdTraceSession(-1, op, callback);
+            var postIds = GetActiveTraceProcessIds();
+
+            var newIds = postIds.Except(preIds).ToArray();
+
+            var session = new TtdTraceSession(newIds[0], op, callback);
+
+            try
+            {
+                if (newIds.Length == 0)
+                    throw new InvalidOperationException("Failed to to identify the PID of the newly launched process.");
+
+                if (newIds.Length > 1)
+                    throw new InvalidOperationException($"Failed to to identify the PID of the newly launched process: multiple TTD traces were started at once ({string.Join(", ", newIds)})");
+
+                CurrentSession = session;
+            }
+            catch
+            {
+                session.Stop();
+
+                throw;
+            }
 
             return CurrentSession;
         }
 
-        public static TtdTraceSession Attach(int processId, Action<TtdDiagnosticMessage> callback = null) =>
-            Attach(processId, false, callback);
+        public static void Attach(int processId, Action<TtdDiagnosticMessage> callback = null) =>
+            AttachAsync(processId, callback).Wait();
 
-        public static TtdTraceSession Attach(int processId, bool outOfProcess, Action<TtdDiagnosticMessage> callback = null)
+        public static TtdTraceSession AttachAsync(int processId, Action<TtdDiagnosticMessage> callback = null) =>
+            AttachAsync(processId, false, callback);
+
+        public static TtdTraceSession AttachAsync(Process process, Action<TtdDiagnosticMessage> callback = null) =>
+            AttachAsync(process.Id, callback);
+
+        public static TtdTraceSession AttachAsync(int processId, bool outOfProcess, Action<TtdDiagnosticMessage> callback = null)
         {
             bool selfTrace = processId == Process.GetCurrentProcess().Id;
 
@@ -278,15 +325,6 @@ namespace ChaosLib
 
             return CurrentSession;
         }
-
-        public static TtdTraceSession Attach(Process process, Action<TtdDiagnosticMessage> callback = null) =>
-            Attach(process.Id, callback);
-
-        #region Control
-
-
-
-        #endregion
 
         public static string Help(TtdHelpMode helpMode)
         {
@@ -398,6 +436,34 @@ namespace ChaosLib
             }
 
             return runPath;
+        }
+
+        public static int[] GetActiveTraceProcessIds()
+        {
+            /* ttdrecord!TTD::GetProcessIdsOfAllGuestProcesses drives enumerating all process IDs that are currently being traced.
+             * First it calls TTD::GetAllSessionIds, which enumerates all processes running on the system and then does NtQueryInformationProcess(ProcessSessionInformation)
+             * to get the session ID of each process. Then, for each of these processes it calls TTD::GetProcessesBeingTracedInSession which performs
+             * the logic that you see below. Normally, trace sessions will run under \Sessions\<sessionId>\BaseNamedObjects, however I think when
+             * a user does not have proper permissions, it can instead be configured to run in the global \BaseNamedObjects directory instead. Our TTD runner
+             * is designed for debugging applications in the current user's session, so we don't worry looking at the global directory. */
+
+            var sessionId = Kernel32.ProcessIdToSessionId(Kernel32.GetCurrentProcessId());
+
+            var pids = Ntdll.EnumerateDirectories($"\\Sessions\\{sessionId}\\BaseNamedObjects")
+                .Where(v => v.StartsWith("ttd_a_"))
+                .Select(v =>
+                {
+                    var ch = v.LastIndexOf('_');
+
+                    var str = v.Substring(ch + 1);
+
+                    var num = Convert.ToInt32(str, 16);
+
+                    return num;
+                })
+                .ToArray();
+
+            return pids;
         }
     }
 }

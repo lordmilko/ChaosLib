@@ -16,6 +16,11 @@ namespace ChaosLib
             value = Marshal.AllocHGlobal(size);
         }
 
+        public MemoryBuffer(IntPtr value)
+        {
+            this.value = value;
+        }
+
         public static implicit operator IntPtr(MemoryBuffer buffer) => buffer.value;
 
         public virtual void Dispose()

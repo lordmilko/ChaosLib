@@ -27,6 +27,22 @@ namespace ChaosLib
                 [In] IntPtr Cookie);
 
             [DllImport(ntdll)]
+            public static extern NTSTATUS NtOpenDirectoryObject(
+                [Out] out IntPtr DirectoryHandle,
+                [In] ACCESS_MASK DesiredAccess,
+                [In] ref OBJECT_ATTRIBUTES ObjectAttributes);
+
+            [DllImport(ntdll)]
+            public static extern NTSTATUS NtQueryDirectoryObject(
+                [In] IntPtr DirectoryHandle,
+                [Out] IntPtr Buffer,
+                [In] int Length,
+                [In, MarshalAs(UnmanagedType.U1)] bool ReturnSingleEntry,
+                [In, MarshalAs(UnmanagedType.U1)] bool RestartScan,
+                [In, Out] ref int Context,
+                [Out] out int ReturnLength);
+
+            [DllImport(ntdll)]
             public static extern NTSTATUS NtQueryInformationProcess(
                 [In] IntPtr ProcessHandle,
                 [In] PROCESSINFOCLASS ProcessInformationClass,

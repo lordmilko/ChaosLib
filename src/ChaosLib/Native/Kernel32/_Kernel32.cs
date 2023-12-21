@@ -26,6 +26,8 @@ namespace ChaosLib
 
         public static void FreeLibrary(IntPtr hLibModule) => Native.FreeLibrary(hLibModule);
 
+        public static int GetCurrentProcessId() => Native.GetCurrentProcessId();
+
         public static int GetCurrentThreadId() => Native.GetCurrentThreadId();
 
         public static void SetConsoleCtrlHandler(ConsoleCtrlHandlerRoutine HandlerRoutine, bool Add) =>
@@ -589,6 +591,19 @@ namespace ChaosLib
             hThread = Native.OpenThread(dwDesiredAccess, bInheritHandle, dwThreadId);
 
             return hThread == IntPtr.Zero ? (HRESULT) Marshal.GetHRForLastWin32Error() : S_OK;
+        }
+
+        #endregion
+        #region ProcessIdToSessionId
+
+        public static int ProcessIdToSessionId(int dwProcessId)
+        {
+            var result = Native.ProcessIdToSessionId(dwProcessId, out var pSessionId);
+
+            if (!result)
+                ((HRESULT) Marshal.GetHRForLastWin32Error()).ThrowOnNotOK();
+
+            return pSessionId;
         }
 
         #endregion

@@ -103,6 +103,9 @@ namespace ChaosLib
             public static extern bool FreeLibrary(IntPtr hLibModule);
 
             [DllImport(kernel32)]
+            public static extern int GetCurrentProcessId();
+
+            [DllImport(kernel32)]
             public static extern int GetCurrentThreadId();
 
             [DllImport(kernel32, SetLastError = true)]
@@ -179,6 +182,11 @@ namespace ChaosLib
 
             [DllImport(kernel32, SetLastError = true)]
             public static extern IntPtr OpenThread(ThreadAccess dwDesiredAccess, bool bInheritHandle, int dwThreadId);
+
+            [DllImport(kernel32, SetLastError = true)]
+            public static extern bool ProcessIdToSessionId(
+                [In] int dwProcessId,
+                [Out] out int pSessionId);
 
             [DllImport(kernel32, SetLastError = true)]
             public static extern int QueryDosDeviceW(
