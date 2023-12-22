@@ -28,6 +28,18 @@ namespace ChaosLib
             return this.ReadVirtual<long>(address);
         }
 
+        public HRESULT TryReadPointer(long address, out long result)
+        {
+            if (Is32Bit)
+            {
+                var hr = this.TryReadVirtual<int>(address, out var raw);
+                result = raw;
+                return hr;
+            }
+
+            return this.TryReadVirtual<long>(address, out result);
+        }
+
         public unsafe HRESULT ReadVirtual(long address, IntPtr buffer, int bytesRequested, out int bytesRead)
         {
             //ReadProcessMemory will fail if any part of the region to read does not have read access, which can commonly occur

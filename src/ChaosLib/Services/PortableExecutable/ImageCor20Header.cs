@@ -31,7 +31,7 @@
         public IImageDataDirectory Resources { get; }
         public IImageDataDirectory StrongNameSignature { get; }
         public IImageDataDirectory CodeManagerTable { get; }
-        public IImageDataDirectory VtableFixups { get; }
+        public IImageDataDirectory VtableFixups { get; } //While this member IS meant to be an IMAGE_DATA_DIRECTORY, there are apparently extra members in this directory as well: https://blog.xpnsec.com/the-net-export-portal/
         public IImageDataDirectory ExportAddressTableJumps { get; }
         public IImageDataDirectory ManagedNativeHeader { get; }
 

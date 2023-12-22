@@ -1,4 +1,6 @@
 ﻿<Project>
+  <Import Project="..\build\Version.props" />
+
   <PropertyGroup>
     <Build>$(MSBuildThisFileDirectory)..\build\</Build>
 	
@@ -9,7 +11,7 @@
 
   <PropertyGroup>
     <EnvDTEVersion>8.0.3</EnvDTEVersion>
-    <ClrDebugVersion>0.3.0</ClrDebugVersion>
+    <ClrDebugVersion>0.3.1</ClrDebugVersion>
 
     <TestSDKVersion>16.9.4</TestSDKVersion>
     <MSTestVersion>2.2.3</MSTestVersion>

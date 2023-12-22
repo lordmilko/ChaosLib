@@ -4,6 +4,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using ChaosLib.TypedData;
 using ClrDebug;
+using ClrDebug.DbgEng;
 using ClrDebug.DIA;
 
 namespace ChaosLib
@@ -37,9 +38,7 @@ namespace ChaosLib
          *
          * In conclusion, in practice you can't really use a custom symsrv DLL without placing it in the same directory
          * as DbgHelp, which kind of defeats the purpose of being able to specify a custom symsrv DLL for the purposes
-         * of using the copy of DbgHelp under system32 when you don't have the Debugging Tools for Windows installed.
-         *
-         * */
+         * of using the copy of DbgHelp under system32 when you don't have the Debugging Tools for Windows installed. */
 
         private DbgHelpSymbolCallback callbackInstance;
         private PSYMBOL_REGISTERED_CALLBACK64 callback; //Without this it seems the delegate can get GC'd
@@ -49,6 +48,29 @@ namespace ChaosLib
         private HashSet<long> modules = new HashSet<long>();
 
         public IntPtr hProcess { get; }
+
+        //Options are global within DbgHelp
+        internal SYMOPT GlobalOptions
+        {
+            get => DbgHelp.SymGetOptions();
+            set => DbgHelp.SymSetOptions(value);
+        }
+
+        public string[] Modules
+        {
+            get
+            {
+                var list = new List<string>();
+
+                DbgHelp.SymEnumerateModules64(hProcess, (moduleName, baseAddress, userContext) =>
+                {
+                    list.Add(moduleName + " " + baseAddress.ToString("X"));
+                    return true;
+                });
+
+                return list.ToArray();
+            }
+        }
 
         #region Callback
 
@@ -165,7 +187,7 @@ namespace ChaosLib
 
                         var modulePath = Marshal.PtrToStringAnsi((IntPtr) moduleInfo.FullPathName);
 
-                        AddModule(modulePath, (long) (void*) moduleInfo.ImageBase);
+                        AddModule(modulePath, (long) (void*) moduleInfo.ImageBase, moduleInfo.ImageSize);
                     }
                 }
             }
@@ -175,11 +197,26 @@ namespace ChaosLib
             }
         }
 
-        public void AddModule(string imageName, long baseOfDll)
+        public void AddModule(string imageName, long baseOfDll, int dllSize)
         {
-            modules.Add(baseOfDll);
+            /* You can usually get away with not specifying an image size. In dbghelp!LoadModule,
+             * it will call dbghelp!modload which will result in the true image size being calculated for you.
+             * However, this behavior does not occur when SYMOPT_DEFERRED_LOADS is specified...leading to any calls to
+             * SymFromAddr now failing due to the bounds of each image now being unknown. Because DbgHelp's options are
+             * set globally, if you load DbgEng to check something, it will overwrite all of the default DbgHelp options!
+             * Thus it is safest to just always specify the image size and avoid these kinds of mixups */
 
-            DbgHelp.SymLoadModuleEx(hProcess, imageName: imageName, baseOfDll: (ulong) baseOfDll);
+            if (!modules.Add(baseOfDll))
+                throw new InvalidOperationException("Module was already loaded");
+
+            DbgHelp.SymLoadModuleEx(hProcess, imageName: imageName, baseOfDll: (ulong) baseOfDll, dllSize: dllSize);
+        }
+
+        public void RemoveModule(long baseOfDll)
+        {
+            modules.Remove(baseOfDll);
+
+            DbgHelp.SymUnloadModule64(hProcess, baseOfDll);
         }
 
         public HRESULT TrySymFromAddr(long address, out SymFromAddrResult result) =>

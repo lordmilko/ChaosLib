@@ -23,7 +23,9 @@ after_build:
   - ps: Invoke-AppveyorAfterBuild
 before_test:
   # Build NuGet packages
-  - ps: Invoke-AppveyorBeforeTest
+  #- ps: Invoke-AppveyorBeforeTest
+  # BuildTools currently assumes whatever you're building will have a PowerShell component. Until this is fixed, we must manually package
+  - ps: dotnet pack --include-symbols --no-restore --no-build -p:"EnableSourceLink=true;SymbolPackageFormat=snupkg"
 test_script:
   # Test all target frameworks
   - ps: Invoke-AppveyorTest
@@ -33,9 +35,9 @@ after_test:
 #on_finish:
 #  - ps: $blockRdp = $true; iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
 artifacts:
-  - path: '*.zip'
-  - path: '*.nupkg'
-  - path: '*.snupkg'
+  - path: '**/*.zip'
+  - path: '**/*.nupkg'
+  - path: '**/*.snupkg'
 skip_commits:
   files:
     - '**/*.md'

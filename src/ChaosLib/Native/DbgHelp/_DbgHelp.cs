@@ -13,6 +13,8 @@ namespace ChaosLib
 
         #region Relay
 
+        public static SYMOPT SymGetOptions() => Native.SymGetOptions();
+
         public static SYMOPT SymSetOptions(SYMOPT SymOptions) => Native.SymSetOptions(SymOptions);
 
         #endregion
@@ -28,6 +30,19 @@ namespace ChaosLib
                 return (HRESULT) Marshal.GetHRForLastWin32Error();
 
             return HRESULT.S_OK;
+        }
+
+        #endregion
+        #region SymEnumerateModules64
+
+        public static void SymEnumerateModules64(IntPtr hProcess, PSYM_ENUMMODULES_CALLBACK64 EnumModulesCallback)
+        {
+            var result = Native.SymEnumerateModules64(hProcess, EnumModulesCallback, IntPtr.Zero);
+
+            if (!result)
+                ((HRESULT) Marshal.GetHRForLastWin32Error()).ThrowOnNotOK();
+
+            GC.KeepAlive(EnumModulesCallback);
         }
 
         #endregion

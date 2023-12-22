@@ -189,6 +189,9 @@ namespace ChaosLib
                 [In] SYMSEARCH Options);
 
             [DllImport(dbghelp)]
+            internal static extern SYMOPT SymGetOptions();
+
+            [DllImport(dbghelp)]
             internal static extern SYMOPT SymSetOptions(
                 [In] SYMOPT SymOptions);
 

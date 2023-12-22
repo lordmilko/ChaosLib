@@ -33,7 +33,8 @@ namespace ChaosLib.Tests
             var dbgHelpSession = new DbgHelpSession(process.Handle, invadeProcess: false);
             var ntdll = process.Modules.Cast<ProcessModule>().Single(m => m.ModuleName == "ntdll.dll");
 
-            dbgHelpSession.AddModule(ntdll.ModuleName, (long) ntdll.BaseAddress);
+            //As long as you use the default symbol options, DbgHelp will read the PE File for you and calculate the image size, if you don't set it
+            dbgHelpSession.AddModule(ntdll.ModuleName, (long) ntdll.BaseAddress, 0);
 
             var peb = Ntdll.NtQueryInformationProcess<PROCESS_BASIC_INFORMATION>(process.Handle, PROCESSINFOCLASS.ProcessBasicInformation).PebBaseAddress;
 

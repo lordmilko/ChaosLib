@@ -464,6 +464,19 @@ namespace ChaosLib
         }
 
         #endregion
+        #region GetThreadId
+
+        public static int GetThreadId(IntPtr Thread)
+        {
+            var result = Native.GetThreadId(Thread);
+
+            if (result == 0)
+                ((HRESULT) Marshal.GetHRForLastWin32Error()).ThrowOnNotOK();
+
+            return result;
+        }
+
+        #endregion
         #region GetVolumePathNamesForVolumeNameW
 
         public static string[] GetVolumePathNamesForVolumeNameW(string lpszVolumeName)

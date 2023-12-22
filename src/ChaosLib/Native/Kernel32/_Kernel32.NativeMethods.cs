@@ -131,13 +131,16 @@ namespace ChaosLib
             [DllImport(kernel32, SetLastError = true)]
             public static extern int GetProcessId([In] IntPtr Process);
 
+            [DllImport(kernel32, SetLastError = true)]
+            public static extern bool GetThreadContext(IntPtr hThread, IntPtr lpContext);
+
             [DllImport(kernel32)]
             public static extern HRESULT GetThreadDescription(
                 [In] IntPtr hThread,
                 [Out] out IntPtr ppszThreadDescription);
 
             [DllImport(kernel32, SetLastError = true)]
-            public static extern bool GetThreadContext(IntPtr hThread, IntPtr lpContext);
+            public static extern int GetThreadId([In] IntPtr Thread);
 
             [DllImport(kernel32, SetLastError = true)]
             public static extern bool GetVolumePathNamesForVolumeNameW(

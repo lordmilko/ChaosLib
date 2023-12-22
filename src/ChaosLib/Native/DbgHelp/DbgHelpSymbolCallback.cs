@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
+using ClrDebug.DbgEng;
 
 namespace ChaosLib
 {
@@ -17,7 +18,8 @@ namespace ChaosLib
         {
             ActivityStart,
             Log,
-            ActivityEnd
+            ActivityEnd,
+            Progress
         }
 
         public abstract class XmlEvent
@@ -65,6 +67,17 @@ namespace ChaosLib
         {
             public XmlActivityEndEvent() : base(XmlEventKind.ActivityEnd)
             {
+            }
+        }
+
+        [DebuggerDisplay("Percent = {Percent}")]
+        public class XmlProgressEvent : XmlEvent
+        {
+            public int Percent { get; }
+
+            public XmlProgressEvent(int percent) : base(XmlEventKind.Progress)
+            {
+                Percent = percent;
             }
         }
 
@@ -123,6 +136,9 @@ namespace ChaosLib
                     break;
 
                 case CBA.CBA_SET_OPTIONS:
+                    var options = *(SYMOPT*) CallbackData;
+                    throw new NotImplementedException($"Don't know how to handle {nameof(CBA)} '{ActionCode}'.");
+
                 case CBA.CBA_EVENT:
                 case CBA.CBA_DEBUG_INFO:
                 case CBA.CBA_SRCSRV_INFO:
@@ -189,7 +205,17 @@ namespace ChaosLib
                         OnXml?.Invoke(this, new XmlActivityEndEvent());
                     }
                     else
-                        Debug.Assert(false);
+                    {
+                        match = Regex.Match(str, "<Progress percent=\"(.+?)\"/>");
+
+                        if (match.Success)
+                        {
+                            var percent = Convert.ToInt32(match.Groups[1].Value);
+                            OnXml?.Invoke(this, new XmlProgressEvent(percent));
+                        }
+                        else
+                            Debug.Assert(false, $"Don't know how to handle XML '{str}'");
+                    }
                 }
             }
         }
